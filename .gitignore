@@ -1,0 +1,10 @@
+# all data in all of its forms
+/data/raw
+/data/cohorts
+/data/processed
+/data/interim
+/data/results
+
+# sbatch jobs and logs
+src/pipelines/job.sh
+src/pipelines/logs/

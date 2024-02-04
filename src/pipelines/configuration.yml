@@ -1,0 +1,19 @@
+# This is a YAML file that contains the configuration for the pipeline.
+
+path:
+  raw_eicu_data: "../../data/raw/eICU"
+  original_cohorts: "../../data/cohorts/sepsis_eicu_robin"
+  cohorts: "../../data/cohorts/sepsis_eicu_extended"
+  interim: "../../data/interim"
+  features: "../../data/interim"
+  results: "../../data/results"
+
+filename:
+  combined: "combined.parquet"
+  features: "features.parquet"
+
+split:
+  random_split_reps: 5
+
+training:
+  columns_to_drop: ["label", "hospitalid", "stay_id", "uniquepid"] # Columns to drop during training (X_train, X_test)

@@ -1,0 +1,1 @@
+This directory contains configuration files. These files can include hyperparameters, file paths, wandb sweep configurations or any other configurations needed in the project.
