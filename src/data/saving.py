@@ -31,3 +31,19 @@ def copy_parquet(input_dir, output_dir, filename):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     os.system(f"cp {os.path.join(input_dir, filename)} {os.path.join(output_dir, filename)}")
+    
+def save_csv(df, output_dir, filename):
+    """
+    Save dataframe to a csv file.
+
+    Args:
+        df (pandas.DataFrame): The dataframe to be saved.
+        output_dir (str): The path to the directory to save the csv file.
+        filename (str): The name of the csv file.
+        
+    Returns:
+        None
+    """
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    df.to_csv(os.path.join(output_dir, filename), index=False)

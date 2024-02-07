@@ -12,11 +12,11 @@ from sklearn.metrics import (
 def get_accuracy(y_test, y_pred):
     """
     Get accuracy.
-    
+
     Args:
         y_test: True labels
         y_pred: Predicted labels
-    
+
     Returns:
         float: Accuracy
     """
@@ -26,19 +26,24 @@ def get_accuracy(y_test, y_pred):
 def get_auroc(y_test, y_pred_proba):
     """
     Get area under receiver operating characteristic curve.
-    
+
     Args:
         y_test: True labels
         y_pred_proba: Predicted probabilities
-        
+
     Returns:
         float: Area under receiver operating characteristic curve
     """
+    # Get the probability of the positive class
     try:
-        try:
-            auroc = round(roc_auc_score(y_test, y_pred_proba[:, 1]), 4)
-        except IndexError:
-            auroc = round(roc_auc_score(y_test, np.zeros_like(y_pred_proba)), 4) # If all predictions are False(=0), no predictions are True(=1)
+        y_score = y_pred_proba[:, 1]
+    except IndexError:
+        # If all predictions are False(=0), no predictions are True(=1)
+        y_score = np.zeros_like(y_pred_proba)
+
+    # Calculate area under receiver operating characteristic curve
+    try:
+        auroc = round(roc_auc_score(y_test, y_score), 4)
     except ValueError:
         auroc = "Not defined"
 
@@ -48,19 +53,24 @@ def get_auroc(y_test, y_pred_proba):
 def get_auprc(y_test, y_pred_proba):
     """
     Get area under precision-recall curve.
-    
+
     Args:
         y_test: True labels
         y_pred_proba: Predicted probabilities
-    
+
     Returns:
         float: Area under precision-recall curve
     """
+    # Get the probability of the positive class
     try:
-        try:
-            auprc = round(average_precision_score(y_test, y_pred_proba[:, 1]), 4)
-        except IndexError:
-            auprc = round(average_precision_score(y_test, np.zeros_like(y_pred_proba)), 4) # If all predictions are False(=0), no predictions are True(=1) 
+        y_score = y_pred_proba[:, 1]
+    except IndexError:
+        # If all predictions are False(=0), no predictions are True(=1)
+        y_score = np.zeros_like(y_pred_proba)
+
+    # Calculate average precision
+    try:
+        auprc = round(average_precision_score(y_test, y_score), 4)
     except ValueError:
         auprc = "Not defined"
 
@@ -70,11 +80,11 @@ def get_auprc(y_test, y_pred_proba):
 def get_confusion_matrix(y_test, y_pred):
     """
     Get confusion matrix.
-    
+
     Args:
         y_test: True labels
         y_pred: Predicted labels
-    
+
     Returns:
         np.ndarray: Confusion matrix
     """
@@ -95,10 +105,11 @@ def get_average_confusion_matrix(
     Returns:
         np.ndarray: Averaged confusion matrix
     """
-    if entries_to_consider is None:
-        return sum(cm_list)  # Average across complete list
-    else:
-        return sum(cm_list[-entries_to_consider:])
+    # If specified: Only consider last entries_to_consider elements
+    if entries_to_consider is not None:
+        cm_list = cm_list[-entries_to_consider:]
+
+    return sum(cm_list)
 
 
 def get_average_metric(
@@ -113,15 +124,17 @@ def get_average_metric(
         entries_to_consider: Number of last entries to consider
 
     Returns:
-        float: Averaged metric
+        float: Averaged metric or "Not defined" if an exception occurs
     """
+    # If specified: Only consider last entries_to_consider elements
+    if entries_to_consider is not None:
+        metric_list = metric_list[-entries_to_consider:]
+
+    # Remove "Not defined" elements
+    metric_list = [metric for metric in metric_list if metric != "Not defined"]
+
     try:
-        if entries_to_consider is None:
-            return round(
-                sum(metric_list) / len(metric_list), 4
-            )  # Average across complete list
-        else:
-            return round(sum(metric_list[-entries_to_consider:]) / entries_to_consider, 4)
+        # Calculate average
+        return round(sum(metric_list) / len(metric_list), 4)
     except Exception:
-        return "Not defined"
-        
+        return "Avg calculation not possible."

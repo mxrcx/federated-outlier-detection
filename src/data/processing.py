@@ -155,3 +155,20 @@ def init_imputer(df: pd.DataFrame) -> ColumnTransformer:
     )
 
     return imputer
+
+
+def reformat_time_column(data):
+    """
+    Reformat the 'time' column from timedelta to total seconds.
+
+    Args:
+        data (pd.DataFrame): The input dataframe.
+
+    Returns:
+        pd.DataFrame: The dataframe with the reformatted 'time' column.
+    """
+    if "time" in data.columns:
+        data["time"] = data["time"].dt.total_seconds()
+    return data
+
+

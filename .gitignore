@@ -1,10 +1,17 @@
 # all data in all of its forms
-/data/raw
-/data/cohorts
-/data/processed
-/data/interim
-/data/results
+/data
+
+# all results in all of its forms
+/results
 
 # sbatch jobs and logs
-src/pipelines/job.sh
+src/pipelines/job_cml_local.sh
+src/pipelines/job_cml_loho_split.sh
+src/pipelines/job_cml_random_split.sh
 src/pipelines/logs/
+
+# notebook checkpoints
+.ipynb_checkpoints
+
+# cache files
+__pycache__
