@@ -1,7 +1,6 @@
 import os
 import pandas as pd
 
-from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 
 from data.loading import load_parquet, load_configuration
@@ -13,41 +12,25 @@ from data.processing import (
     reformat_time_column,
 )
 from data.feature_extraction import prepare_cohort_and_extract_features
-from metrics.metrics import (
-    get_accuracy,
-    get_auroc,
-    get_auprc,
-    get_confusion_matrix,
-    get_average_confusion_matrix,
-    get_average_metric,
-)
+from metrics.metrics import Metrics
+from training.preparation import split_data_on_stay_ids
 
 
-def single_local_run(data_hospital, random_state, columns_to_drop):
+def single_local_run(data, test_size, random_state, columns_to_drop, metrics):
     """
     Perform a single run of the local pipeline.
 
     Args:
-        data_hospital (pd.DataFrame): The data to be used.
+        data (pd.DataFrame): The data to be used.
         random_state (int): The random state to be used.
         columns_to_drop (list): The configuration settings.
-
-    Returns:
-        acc (float): The accuracy.
-        auroc (float): The AUROC.
-        auprc (float): The AUPRC.
-        cm (np.ndarray): The confusion matrix.
     """
     print(f"Random State {random_state}...", end="", flush=True)
 
     # Split the data into training and test set based on stay_id
-    stay_ids = data_hospital["stay_id"].unique()
-    train_stay_ids, test_stay_ids = train_test_split(
-        stay_ids, test_size=0.2, random_state=random_state
-    )
-    train = data_hospital[data_hospital["stay_id"].isin(train_stay_ids)]
-    test = data_hospital[data_hospital["stay_id"].isin(test_stay_ids)]
+    train, test = split_data_on_stay_ids(data, test_size, random_state)
 
+    # Define the features and target
     X_train = train.drop(columns=columns_to_drop)
     y_train = train["label"]
     X_test = test.drop(columns=columns_to_drop)
@@ -67,47 +50,16 @@ def single_local_run(data_hospital, random_state, columns_to_drop):
     y_pred = model.predict(X_test)
     y_pred_proba = model.predict_proba(X_test)
 
-    # Calculate metrics
-    acc = get_accuracy(y_test, y_pred)
-    auroc = get_auroc(y_test, y_pred_proba)
-    auprc = get_auprc(y_test, y_pred_proba)
-    cm = get_confusion_matrix(y_test, y_pred)
+    # Add metrics
+    metrics.add_random_state(random_state)
+    metrics.add_accuracy_value(y_test, y_pred)
+    metrics.add_auroc_value(y_test, y_pred_proba)
+    metrics.add_auprc_value(y_test, y_pred_proba)
+    metrics.add_confusion_matrix(y_test, y_pred)
+    metrics.add_tn_fp_sum()
+    metrics.add_fpr()
 
     print(f"DONE.", flush=True)
-
-    return acc, auroc, auprc, cm
-
-
-def save_metrics_as_csv(
-    hospitalids, random_states, accs, aurocs, auprcs, cms, path, filename
-):
-    """
-    Save the metrics as a csv file.
-
-    Args:
-        hospitalids (list): The list of hospitalids.
-        random_states (list): The list of random states.
-        accs (list): The list of accuracies.
-        aurocs (list): The list of AUROCs.
-        auprcs (list): The list of AUPRCs.
-        cms (list): The list of confusion matrices.
-        path (str): The path to the directory where the csv file should be saved.
-        filename (str): The name of the csv file.
-
-    Returns:
-        None
-    """
-    metrics_df = pd.DataFrame(
-        {
-            "Hospital ID": hospitalids,
-            "Random State": random_states,
-            "Accuracy": accs,
-            "AUROC": aurocs,
-            "AUPRC": auprcs,
-            "Confusion_Matrix": cms,
-        }
-    )
-    save_csv(metrics_df, path, filename)
 
 
 def cml_local_pipeline():
@@ -123,13 +75,8 @@ def cml_local_pipeline():
     data = reformat_time_column(data)
     data = encode_categorical_columns(data, config_settings["training_columns_to_drop"])
 
-    # Create lists for saving metrics, hospitalids and random_states
-    hospitalids = []
-    random_states = []
-    accs = []
-    aurocs = []
-    auprcs = []
-    cms = []
+    # Create metrics object
+    metrics = Metrics()
 
     # Repeate for each hospital_id in the dataset:
     for hospitalid in data["hospitalid"].unique():
@@ -138,38 +85,65 @@ def cml_local_pipeline():
 
         # Repeate with a different random state:
         for random_state in range(config_settings["random_split_reps"]):
-            acc, auroc, auprc, cm = single_local_run(
+            single_local_run(
                 data_hospital,
+                config_settings["test_size"],
                 random_state,
                 config_settings["training_columns_to_drop"],
+                metrics,
             )
-            hospitalids.append(hospitalid)
-            random_states.append(random_state)
-            accs.append(acc)
-            aurocs.append(auroc)
-            auprcs.append(auprc)
-            cms.append(cm)
+            metrics.add_hospitalid(hospitalid)
 
         # Calculate averages accross random states for current hospital_id
-        hospitalids.append(hospitalid)
-        random_states.append("Average")
-        accs.append(get_average_metric(accs, config_settings["random_split_reps"]))
-        aurocs.append(get_average_metric(aurocs, config_settings["random_split_reps"]))
-        auprcs.append(get_average_metric(auprcs, config_settings["random_split_reps"]))
-        cms.append(
-            get_average_confusion_matrix(cms, config_settings["random_split_reps"])
+        metrics.add_hospitalid_avg(hospitalid)
+        metrics.add_metrics_mean(
+            ["Accuracy", "AUROC", "AUPRC", "TN-FP-Sum", "FPR"],
+            config_settings["random_split_reps"],
         )
+        metrics.add_metrics_std(
+            ["Accuracy", "AUROC", "AUPRC", "TN-FP-Sum", "FPR"],
+            config_settings["random_split_reps"],
+        )
+        metrics.add_confusion_matrix_average()
 
-    save_metrics_as_csv(
-        hospitalids,
-        random_states,
-        accs,
-        aurocs,
-        auprcs,
-        cms,
-        path["results"],
-        "cml_local_metrics.csv",
+    # Save normal metrics
+    metrics_df = metrics.get_metrics_value_dataframe(
+        [
+            "Hospitalid",
+            "Random State",
+            "Accuracy",
+            "AUROC",
+            "AUPRC",
+            "Confusion Matrix",
+            "TN-FP-Sum",
+            "FPR",
+        ]
     )
+    save_csv(metrics_df, path["results"], "cml_local_metrics.csv")
+
+    # Calculate total averages
+    metrics.add_hospitalid_avg("Total Average")
+    metrics.add_metrics_mean(
+        ["Accuracy", "AUROC", "AUPRC", "TN-FP-Sum", "FPR"], on_mean_data=True
+    )
+    metrics.add_metrics_std(
+        ["Accuracy", "AUROC", "AUPRC", "TN-FP-Sum", "FPR"], on_mean_data=True
+    )
+    metrics.add_confusion_matrix_average(on_mean_data=True)
+
+    # Save averages
+    metrics_avg_df = metrics.get_metrics_avg_dataframe(
+        [
+            "Hospitalid",
+            "Accuracy",
+            "AUROC",
+            "AUPRC",
+            "Confusion Matrix",
+            "TN-FP-Sum",
+            "FPR",
+        ]
+    )
+    save_csv(metrics_avg_df, path["results"], "cml_local_metrics_avg.csv")
 
 
 if __name__ == "__main__":

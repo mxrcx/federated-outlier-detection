@@ -59,7 +59,9 @@ def merge_cohort_data(
     return eICU_cohort_complete_data
 
 
-def encode_categorical_columns(df: pd.DataFrame, columns_to_drop: list[str]) -> pd.DataFrame:
+def encode_categorical_columns(
+    df: pd.DataFrame, columns_to_drop: list[str]
+) -> pd.DataFrame:
     """
     Encode categorical columns in the dataframe. Exclude columns in columns_to_drop.
 
@@ -76,10 +78,12 @@ def encode_categorical_columns(df: pd.DataFrame, columns_to_drop: list[str]) -> 
     # Encode the categorical columns
     encoder = OneHotEncoder()
     encoded_cols = encoder.fit_transform(df[categorical_cols])
-    encoded_col_names = [f"{col}_{category}" for i,col in enumerate(categorical_cols) for category in encoder.categories_[i]]
-    encoded_df = pd.DataFrame(
-        encoded_cols.toarray(), columns=encoded_col_names
-    )
+    encoded_col_names = [
+        f"{col}_{category}"
+        for i, col in enumerate(categorical_cols)
+        for category in encoder.categories_[i]
+    ]
+    encoded_df = pd.DataFrame(encoded_cols.toarray(), columns=encoded_col_names)
 
     # Drop categorical columns & concatenate the original dataframe with the encoded columns
     df = df.drop(columns=categorical_cols)
@@ -170,5 +174,3 @@ def reformat_time_column(data):
     if "time" in data.columns:
         data["time"] = data["time"].dt.total_seconds()
     return data
-
-
