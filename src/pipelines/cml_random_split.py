@@ -1,7 +1,5 @@
 import os
-import pandas as pd
 
-from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 
 from data.loading import load_configuration, load_parquet
@@ -13,17 +11,11 @@ from data.processing import (
     reformat_time_column,
 )
 from data.feature_extraction import prepare_cohort_and_extract_features
-from metrics.metrics import (
-    get_accuracy,
-    get_auroc,
-    get_auprc,
-    get_confusion_matrix,
-    get_average_confusion_matrix,
-    get_average_metric,
-)
+from metrics.metrics import Metrics
+from training.preparation import split_data_on_stay_ids
 
 
-def single_random_split_run(data, random_state, columns_to_drop):
+def single_random_split_run(data, test_size, random_state, columns_to_drop, metrics):
     """
     Perform a single run of the random split pipeline.
 
@@ -31,20 +23,14 @@ def single_random_split_run(data, random_state, columns_to_drop):
         data (pd.DataFrame): The data to be used.
         random_state (int): The random state to be used.
         columns_to_drop (list): The configuration settings.
-    
-    Returns:
-        acc (float): The accuracy.
-        auroc (float): The AUROC.
-        auprc (float): The AUPRC.
-        cm (np.ndarray): The confusion matrix.
+        metrics (Metrics): The metrics object.
     """
     print(f"Random State {random_state}...", end="", flush=True)
 
-    # Split the data into training and test set
-    train, test = train_test_split(
-        data, test_size=0.2, stratify=data["label"], random_state=random_state
-    )
+    # Split the data into training and test set based on stay_id
+    train, test = split_data_on_stay_ids(data, test_size, random_state)
 
+    # Define the features and target
     X_train = train.drop(columns=columns_to_drop)
     y_train = train["label"]
     X_test = test.drop(columns=columns_to_drop)
@@ -64,49 +50,22 @@ def single_random_split_run(data, random_state, columns_to_drop):
     y_pred = model.predict(X_test)
     y_pred_proba = model.predict_proba(X_test)
 
-    # Calculate metrics
-    acc = get_accuracy(y_test, y_pred)
-    auroc = get_auroc(y_test, y_pred_proba)
-    auprc = get_auprc(y_test, y_pred_proba)
-    cm = get_confusion_matrix(y_test, y_pred)
+    # Add metrics
+    metrics.add_random_state(random_state)
+    metrics.add_accuracy_value(y_test, y_pred)
+    metrics.add_auroc_value(y_test, y_pred_proba)
+    metrics.add_auprc_value(y_test, y_pred_proba)
+    metrics.add_confusion_matrix(y_test, y_pred)
+    metrics.add_tn_fp_sum()
+    metrics.add_fpr()
 
     print(f"DONE.", flush=True)
-
-    return acc, auroc, auprc, cm
-
-
-def save_metrics_as_csv(random_states, accs, aurocs, auprcs, cms, path, filename):
-    """
-    Save the metrics as a csv file.
-
-    Args:
-        random_states (list): The list of random states.
-        accs (list): The list of accuracies.
-        aurocs (list): The list of AUROCs.
-        auprcs (list): The list of AUPRCs.
-        cms (list): The list of confusion matrices.
-        path (str): The path to the directory where the csv file should be saved.
-        filename (str): The name of the csv file.
-
-    Returns:
-        None
-    """
-    metrics_df = pd.DataFrame(
-        {
-            "Random State": random_states,
-            "Accuracy": accs,
-            "AUROC": aurocs,
-            "AUPRC": auprcs,
-            "Confusion_Matrix": cms,
-        }
-    )
-    save_csv(metrics_df, path, filename)
 
 
 def cml_random_split_pipeline():
     """
     The pipeline for the CML random split experiment.
-    
+
     Returns:
         None
     """
@@ -122,42 +81,43 @@ def cml_random_split_pipeline():
     data = reformat_time_column(data)
     data = encode_categorical_columns(data, config_settings["training_columns_to_drop"])
 
-    # Create lists for saving metrics
-    random_states = []
-    accs = []
-    aurocs = []
-    auprcs = []
-    cms = []
+    # Create metrics object
+    metrics = Metrics()
 
     # Repeate with a different random state:
     for random_state in range(config_settings["random_split_reps"]):
-        acc, auroc, auprc, cm = single_random_split_run(
+        single_random_split_run(
             data,
+            config_settings["test_size"],
             random_state,
             config_settings["training_columns_to_drop"],
+            metrics,
         )
-        random_states.append(random_state)
-        accs.append(acc)
-        aurocs.append(auroc)
-        auprcs.append(auprc)
-        cms.append(cm)
+
+    # Save normal metric values
+    metrics_df = metrics.get_metrics_value_dataframe(
+        [
+            "Random State",
+            "Accuracy",
+            "AUROC",
+            "AUPRC",
+            "Confusion Matrix",
+            "TN-FP-Sum",
+            "FPR",
+        ]
+    )
+    save_csv(metrics_df, path["results"], "cml_random_split_metrics.csv")
 
     # Calculate averages
-    random_states.append("Average")
-    accs.append(get_average_metric(accs))
-    aurocs.append(get_average_metric(aurocs))
-    auprcs.append(get_average_metric(auprcs))
-    cms.append(get_average_confusion_matrix(cms))
+    metrics.add_metrics_mean(["Accuracy", "AUROC", "AUPRC", "TN-FP-Sum", "FPR"])
+    metrics.add_metrics_std(["Accuracy", "AUROC", "AUPRC", "TN-FP-Sum", "FPR"])
+    metrics.add_confusion_matrix_average()
 
-    save_metrics_as_csv(
-        random_states,
-        accs,
-        aurocs,
-        auprcs,
-        cms,
-        path["results"],
-        "cml_random_split_metrics.csv",
+    # Save averages
+    metrics_avg_df = metrics.get_metrics_avg_dataframe(
+        ["Accuracy", "AUROC", "AUPRC", "Confusion Matrix", "TN-FP-Sum", "FPR"]
     )
+    save_csv(metrics_avg_df, path["results"], "cml_random_split_metrics_avg.csv")
 
 
 if __name__ == "__main__":

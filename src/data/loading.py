@@ -41,6 +41,7 @@ def load_configuration():
         key: config["config_settings"][key]
         for key in [
             "random_split_reps",
+            "test_size",
             "feature_extraction_columns_to_exclude",
             "training_columns_to_drop",
         ]

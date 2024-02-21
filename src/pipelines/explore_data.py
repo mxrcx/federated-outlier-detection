@@ -68,15 +68,17 @@ def create_plots(
                 ax.set_xlabel(feature)
                 # plt.legend(title='Hospital ID', bbox_to_anchor=(1, 1))
             except Exception as e:
-                print(feature)
-                print(e)
+                print(f"Error message for CATEGORICAL feature '{feature}': {e}")
         else:
-            sns.boxplot(x="hospitalid", y=feature, data=feature_data, ax=ax)
-            ax.set_title(
-                f"{feature} - Missing (accross whole dataset): {missing_percentage[feature]:.2f}%"
-            )
-            ax.set_xlabel("Hospital ID")
-            ax.set_ylabel(feature)
+            try:
+                sns.boxplot(x="hospitalid", y=feature, data=feature_data, ax=ax)
+                ax.set_title(
+                    f"{feature} - Missing (accross whole dataset): {missing_percentage[feature]:.2f}%"
+                )
+                ax.set_xlabel("Hospital ID")
+                ax.set_ylabel(feature)
+            except Exception as e:
+                print(f"Error message for NUMERICAL feature '{feature}': {e}")
 
     # Save plot to file
     plt.savefig(os.path.join(path_results, filename_results))
