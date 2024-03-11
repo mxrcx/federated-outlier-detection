@@ -31,7 +31,7 @@ from flwr.common import (
 import xgboost as xgb
 
 from data.loading import load_configuration
-from data.processing import init_imputer
+from data.processing import impute, scale
 from training.preparation import split_data_on_stay_ids
 
 
@@ -51,30 +51,32 @@ class XGBClient(fl.client.Client):
         # Split the data into training and test set based on stay_id
         train, test = split_data_on_stay_ids(data=data, test_size=0.2, random_state=0)
 
+        # Perform imputation
+        train = impute(train)
+        test = impute(test)
+
         # Define the features and target
         X_train = train.drop(columns=config_settings["training_columns_to_drop"])
         y_train = train["label"]
         X_valid = test.drop(columns=config_settings["training_columns_to_drop"])
         y_valid = test["label"]
 
-        # Perform imputation
-        imputer = init_imputer(X_train)
-        X_train_imputed = imputer.fit_transform(X_train)
-        X_valid_imputed = imputer.transform(X_valid)
+        # Perform scaling
+        X_train, X_valid = scale(X_train, X_valid)
 
         # Get number of samples
-        self.num_train = len(X_train_imputed)
-        self.num_valid = len(X_valid_imputed)
+        self.num_train = len(X_train)
+        self.num_valid = len(X_valid)
 
         log(
             INFO,
-            f"Client {cid} - X_train shape: {X_train_imputed.shape} - X_valid shape: {X_valid_imputed.shape}",
+            f"Client {cid} - X_train shape: {X_train.shape} - X_valid shape: {X_valid.shape}",
         )
 
         # Reformat data to DMatrix for xgboost
         log(INFO, f"Reformatting data for client {cid}...")
-        self.train_dmatrix = xgb.DMatrix(X_train_imputed, label=y_train)
-        self.valid_dmatrix = xgb.DMatrix(X_valid_imputed, label=y_valid)
+        self.train_dmatrix = xgb.DMatrix(X_train, label=y_train)
+        self.valid_dmatrix = xgb.DMatrix(X_valid, label=y_valid)
 
         # Hyperparamters for XGBoost training
         self.num_local_round = 1

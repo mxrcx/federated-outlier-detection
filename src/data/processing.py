@@ -112,6 +112,7 @@ def drop_cols_with_all_missing(X_train, X_test):
 
     return X_train, X_test
 
+
 def drop_cols_with_perc_missing(X_train, X_test, percentage):
     """
     Drop columns with all missing values from both X_train and X_test.
@@ -125,59 +126,59 @@ def drop_cols_with_perc_missing(X_train, X_test, percentage):
         pd.DataFrame: The training data with columns dropped.
         pd.DataFrame: The test data with columns dropped.
     """
-    cols_to_drop = set(X_train.columns[X_train.isnull().mean() > percentage]) | set(X_test.columns[X_test.isnull().mean() > percentage])
+    cols_to_drop = set(X_train.columns[X_train.isnull().mean() > percentage]) | set(
+        X_test.columns[X_test.isnull().mean() > percentage]
+    )
     X_train.drop(cols_to_drop, axis=1, inplace=True)
     X_test.drop(cols_to_drop, axis=1, inplace=True)
-    
+
     return X_train, X_test
 
 
-def init_imputer(df: pd.DataFrame) -> ColumnTransformer:
-    """
-    Initializes the imputer.
+def impute(df):
+    """Impute missing values in the dataframe.
 
     Args:
         df (pd.DataFrame): The input dataframe.
 
     Returns:
-        ColumnTransformer: An imputer configured to handle numeric and categorical features.
+        pd.DataFrame: The dataframe with imputed missing values.
     """
-    # Define the columns for each data type
-    numeric_features = df.select_dtypes(include=["number"]).columns.tolist()
-    categorical_features = df.select_dtypes(
-        include=["object", "category"]
-    ).columns.tolist()
+    # Impute numerical columns with Forward Fill for each stay_id group
+    numerical_columns = df.select_dtypes(include=["number"]).columns
+    for col in numerical_columns:
+        df.loc[:, col] = df.groupby("stay_id")[col].ffill()
+        # Replace any remaining unknown values with -1
+        df.loc[:, col] = df[col].fillna(-1)
 
-    # Create transformers for imputation and scaling
-    numeric_transformer = Pipeline(
-        steps=[
-            (
-                "imputer",
-                SimpleImputer(strategy="mean"), # Forward Fill (copy last known vlaue and copy it until new value you find, per stay), if all are none --> -1 (not knowing)
-            ),  # Impute missing values with the mean
-            ("scaler", StandardScaler()),  # Standardize the data
-        ]
+    # Impute categorical columns with "unknown" for unknown values
+    categorical_columns = df.select_dtypes(include=["object", "category"]).columns
+    for col in categorical_columns:
+        df.loc[:, col] = df[col].fillna("unknown")
+    return df
+
+
+def scale(X_train, X_test):
+    """Scale the numerical features in the training and test data.
+
+    Args:
+        X_train (pd.DataFrame): The training data (features and target).
+        X_test (pd.DataFrame): The test data (features and target).
+
+    Returns:
+        pd.DataFrame: The scaled training data.
+        pd.DataFrame: The scaled test data.
+    """
+    scaler = StandardScaler()
+    numerical_columns_X_train = X_train.select_dtypes(include=["number"]).columns
+    numerical_columns_X_test = X_test.select_dtypes(include=["number"]).columns
+    X_train[numerical_columns_X_train] = scaler.fit_transform(
+        X_train[numerical_columns_X_train]
     )
-
-    categorical_transformer = Pipeline(
-        steps=[
-            (
-                "imputer",
-                SimpleImputer(strategy="most_frequent"), # If all values none for a stay introduce new category (unknown)
-            ),  # Impute missing values with the most frequent category
-            # ("onehot", OneHotEncoder()),  # One-hot encode categorical data (Already done in preprocessing step)
-        ]
+    X_test[numerical_columns_X_test] = scaler.transform(
+        X_test[numerical_columns_X_test]
     )
-
-    # Combine transformers using ColumnTransformer
-    imputer = ColumnTransformer(
-        transformers=[
-            ("num", numeric_transformer, numeric_features),
-            ("cat", categorical_transformer, categorical_features),
-        ]
-    )
-
-    return imputer
+    return X_train, X_test
 
 
 def reformat_time_column(data):

@@ -11,7 +11,8 @@ from data.saving import save_csv
 from data.processing import (
     encode_categorical_columns,
     drop_cols_with_perc_missing,
-    init_imputer,
+    impute,
+    scale,
     reformat_time_column,
 )
 from data.feature_extraction import prepare_cohort_and_extract_features
@@ -41,9 +42,6 @@ def single_cv_logo_split_run(
         missingness_cutoff (float): The missingness cutoff for columns.
         cv_folds (int): The number of cross-validation folds.
     """
-    X = data.drop(columns=columns_to_drop)
-    y = data["label"]
-    
     # Create the model
     model = RandomForestClassifier(
         n_estimators=100,
@@ -55,22 +53,28 @@ def single_cv_logo_split_run(
     # Perform stratified group k-fold cross-validation
     cv = StratifiedGroupKFold(n_splits=cv_folds, shuffle=True, random_state=random_state)
     for fold, (train_idx, test_idx) in enumerate(
-        cv.split(X, y=stratify_labels, groups=groups)
+        cv.split(data, y=stratify_labels, groups=groups)
     ):
         logging.debug(f"Training fold {fold + 1}...")
        
         # Define the features and target
-        X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+        X_train, X_test = data.iloc[train_idx], data.iloc[test_idx]
+        y = data["label"]
         y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
 
-        # Perform preprocessing & imputation
         logging.debug("Removing columns with missing values...")
         X_train, X_test = drop_cols_with_perc_missing(X_train, X_test, missingness_cutoff)
-
+        
         logging.debug("Imputing missing values...")
-        imputer = init_imputer(X_train)
-        X_train = imputer.fit_transform(X_train)
-        X_test = imputer.transform(X_test)
+        X_train = impute(X_train)
+        X_valid = impute(X_valid)
+        
+        # Drop features
+        X_train = X_train.drop(columns=columns_to_drop)
+        X_valid = X_valid.drop(columns=columns_to_drop)
+
+        # Scale
+        X_train, X_valid = scale(X_train, X_valid)
         
         # Fit model
         model.fit(X_train, y_train)
