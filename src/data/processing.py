@@ -112,6 +112,25 @@ def drop_cols_with_all_missing(X_train, X_test):
 
     return X_train, X_test
 
+def drop_cols_with_perc_missing(X_train, X_test, percentage):
+    """
+    Drop columns with all missing values from both X_train and X_test.
+
+    Args:
+        X_train (pd.DataFrame): The training data.
+        X_test (pd.DataFrame): The test data.
+        percentage (float): The missingness percentage above which a column should be dropped.
+
+    Returns:
+        pd.DataFrame: The training data with columns dropped.
+        pd.DataFrame: The test data with columns dropped.
+    """
+    cols_to_drop = set(X_train.columns[X_train.isnull().mean() > percentage]) | set(X_test.columns[X_test.isnull().mean() > percentage])
+    X_train.drop(cols_to_drop, axis=1, inplace=True)
+    X_test.drop(cols_to_drop, axis=1, inplace=True)
+    
+    return X_train, X_test
+
 
 def init_imputer(df: pd.DataFrame) -> ColumnTransformer:
     """
@@ -134,7 +153,7 @@ def init_imputer(df: pd.DataFrame) -> ColumnTransformer:
         steps=[
             (
                 "imputer",
-                SimpleImputer(strategy="mean"),
+                SimpleImputer(strategy="mean"), # Forward Fill (copy last known vlaue and copy it until new value you find, per stay), if all are none --> -1 (not knowing)
             ),  # Impute missing values with the mean
             ("scaler", StandardScaler()),  # Standardize the data
         ]
@@ -144,7 +163,7 @@ def init_imputer(df: pd.DataFrame) -> ColumnTransformer:
         steps=[
             (
                 "imputer",
-                SimpleImputer(strategy="most_frequent"),
+                SimpleImputer(strategy="most_frequent"), # If all values none for a stay introduce new category (unknown)
             ),  # Impute missing values with the most frequent category
             # ("onehot", OneHotEncoder()),  # One-hot encode categorical data (Already done in preprocessing step)
         ]
@@ -172,5 +191,5 @@ def reformat_time_column(data):
         pd.DataFrame: The dataframe with the reformatted 'time' column.
     """
     if "time" in data.columns:
-        data["time"] = data["time"].dt.total_seconds()
+        data.loc[:, "time"] = data["time"].dt.total_seconds()
     return data

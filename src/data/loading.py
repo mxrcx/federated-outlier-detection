@@ -1,5 +1,8 @@
 import os
 import yaml
+import logging
+from tqdm import tqdm
+
 from pyarrow import parquet as pq
 import pandas as pd
 
@@ -41,7 +44,9 @@ def load_configuration():
         key: config["config_settings"][key]
         for key in [
             "random_split_reps",
+            "cv_folds",
             "test_size",
+            "missingness_cutoff",
             "feature_extraction_columns_to_exclude",
             "training_columns_to_drop",
         ]
@@ -64,12 +69,17 @@ def load_csv(path, filename):
     return pd.read_csv(os.path.join(path, filename))
 
 
-def load_cohort_parquet_files(path):
+def load_cohort_parquet_files(
+    path, filename_static, filename_dynamic, filename_outcome
+):
     """
     Load static, dynamic and outcome dataframes from parquet files.
 
     Args:
         path (str): The path to the directory containing the parquet files.
+        filename_static (str): The name of the static parquet file.
+        filename_dynamic (str): The name of the dynamic parquet file.
+        filename_outcome (str): The name of the outcome parquet file.
 
     Returns:
         pandas.DataFrame: The dataframe with static cohort data.
@@ -77,26 +87,55 @@ def load_cohort_parquet_files(path):
         pandas.DataFrame: The dataframe with outcome cohort data.
     """
     eICU_cohort_static_data = pq.read_table(
-        os.path.join(path, "sta.parquet")
+        os.path.join(path, filename_static)
     ).to_pandas()
     eICU_cohort_dynamic_data = pq.read_table(
-        os.path.join(path, "dyn.parquet")
+        os.path.join(path, filename_dynamic)
     ).to_pandas()
     eICU_cohort_outcome_data = pq.read_table(
-        os.path.join(path, "outc.parquet")
+        os.path.join(path, filename_outcome)
     ).to_pandas()
     return eICU_cohort_static_data, eICU_cohort_dynamic_data, eICU_cohort_outcome_data
 
 
-def load_parquet(path, filename):
+def _optimize_dataframe_footprint(df: pd.DataFrame):
+    """
+    Safely downcast a pandas DataFrame to reduce memory usage.
+
+    Parameters:
+        df (pd.DataFrame): The DataFrame to downcast.
+
+    Returns:
+        df (pd.DataFrame): The safely downcasted DataFrame.
+    """
+
+    logging.debug("Optimizing dataframe memory footprint...")
+
+    # Copy the dataframe to avoid changing the original one
+    df_downcast = df.copy()
+
+    # Downcast numeric columns to smallest type
+    for col in tqdm(df_downcast.select_dtypes(include=['int', 'float']).columns):
+        df_downcast[col] = pd.to_numeric(df_downcast[col], downcast='integer', errors='ignore')
+        df_downcast[col] = pd.to_numeric(df_downcast[col], downcast='float', errors='ignore')
+
+    return df_downcast
+
+def load_parquet(path, filename, optimize_memory = False):
     """
     Load data from a parquet file.
 
     Args:
         path (str): The path to the directory containing the parquet file.
         filename (str): The name of the parquet file.
+        optimize_memory (bool): Whether to optimize the memory of the pd.DataFrame by changing the column types
 
     Returns:
         pandas.DataFrame: The loaded dataframe.
     """
-    return pq.read_table(os.path.join(path, filename)).to_pandas()
+    table = pq.read_table(os.path.join(path, filename)).to_pandas()
+
+    if optimize_memory:
+        table = _optimize_dataframe_footprint(table)
+
+    return table

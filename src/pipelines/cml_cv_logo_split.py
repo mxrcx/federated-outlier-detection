@@ -1,13 +1,11 @@
 import os
 import logging
 import sys
-
-sys.path.append("..")
-
-import ray
-
+import numpy as np
+from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.ensemble import RandomForestClassifier
 
+sys.path.append("..")
 from data.loading import load_parquet, load_configuration
 from data.saving import save_csv
 from data.processing import (
@@ -18,61 +16,84 @@ from data.processing import (
 )
 from data.feature_extraction import prepare_cohort_and_extract_features
 from metrics.metrics import Metrics
-from training.preparation import split_data_on_stay_ids
 
 
-@ray.remote(num_cpus=2)
-def single_local_run(
-    data, test_size, random_state, columns_to_drop, missingness_cutoff
+def single_cv_logo_split_run(
+    data,
+    groups,
+    stratify_labels,
+    random_state,
+    columns_to_drop,
+    metrics,
+    missingness_cutoff,
+    cv_folds,
 ):
     """
-    Perform a single run of the local pipeline.
+    Perform a single run of the stratified group k-fold split pipeline.
 
     Args:
         data (pd.DataFrame): The data to be used.
-        random_state (int): The random state to be used.
+        groups (pd.Series): The group labels for the data.
+        stratify_labels (pd.Series): The labels to stratify the groups by.
+        random_state (int): The random state for reproducibility.
         columns_to_drop (list): The configuration settings.
+        metrics (Metrics): The metrics object.
+        missingness_cutoff (float): The missingness cutoff for columns.
+        cv_folds (int): The number of cross-validation folds.
     """
-    # Split the data into training and test set based on stay_id
-    logging.debug("Splitting data into a train and test subset...")
-    train, test = split_data_on_stay_ids(data, test_size, random_state)
-
-    # Define the features and target
-    X_train = train.drop(columns=columns_to_drop)
-    y_train = train["label"]
-    X_test = test.drop(columns=columns_to_drop)
-    y_test = test["label"]
-
-    # Perform preprocessing & imputation
-    logging.debug("Removing columns with all missing values...")
-    X_train, X_test = drop_cols_with_perc_missing(X_train, X_test, missingness_cutoff)
-
-    logging.debug("Imputing missing values...")
-    imputer = init_imputer(X_train)
-    X_train = imputer.fit_transform(X_train)
-    X_test = imputer.transform(X_test)
-
-    # Create & fit the model
-    # the n_jobs parameter should be at most what the num_cpus value is in the ray.remote annotation
+    X = data.drop(columns=columns_to_drop)
+    y = data["label"]
+    
+    # Create the model
     model = RandomForestClassifier(
-        n_estimators=100, max_depth=7, random_state=random_state, n_jobs=2
+        n_estimators=100,
+        max_depth=7,
+        random_state=random_state,
+        n_jobs=min(16, int(os.environ["SLURM_CPUS_PER_TASK"])),
     )
 
-    logging.debug("Training a model...")
-    model.fit(X_train, y_train)
+    # Perform stratified group k-fold cross-validation
+    cv = StratifiedGroupKFold(n_splits=cv_folds, shuffle=True, random_state=random_state)
+    for fold, (train_idx, test_idx) in enumerate(
+        cv.split(X, y=stratify_labels, groups=groups)
+    ):
+        logging.debug(f"Training fold {fold + 1}...")
+       
+        # Define the features and target
+        X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+        y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
 
-    # Predict the test set
-    logging.debug("Predicting the test set...")
-    y_pred = model.predict(X_test)
-    y_pred_proba = model.predict_proba(X_test)
+        # Perform preprocessing & imputation
+        logging.debug("Removing columns with missing values...")
+        X_train, X_test = drop_cols_with_perc_missing(X_train, X_test, missingness_cutoff)
 
-    return (y_pred, y_pred_proba, y_test, test["stay_id"])
+        logging.debug("Imputing missing values...")
+        imputer = init_imputer(X_train)
+        X_train = imputer.fit_transform(X_train)
+        X_test = imputer.transform(X_test)
+        
+        # Fit model
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        y_pred_proba = model.predict_proba(X_test)
+
+        # Add metrics to the metrics object
+        metrics.add_random_state(random_state)
+        metrics.add_fold((fold + 1))
+        metrics.add_accuracy_value(y_test, y_pred)
+        metrics.add_auroc_value(y_test, y_pred_proba)
+        metrics.add_auprc_value(y_test, y_pred_proba)
+        metrics.add_confusion_matrix(y_test, y_pred)
+        metrics.add_individual_confusion_matrix_values(
+            y_test, y_pred, data.loc[test_idx, "stay_id"]
+        )
+        metrics.add_tn_fp_sum()
+        metrics.add_fpr()
 
 
-def cml_local_pipeline():
+def cml_cv_logo_split_pipeline():
     logging.info("Loading configuration...")
     path, filename, config_settings = load_configuration()
-
     if not os.path.exists(os.path.join(path["features"], filename["features"])):
         logging.info("Preparing cohort and extracting features...")
         prepare_cohort_and_extract_features()
@@ -86,48 +107,31 @@ def cml_local_pipeline():
     data = reformat_time_column(data)
     data = encode_categorical_columns(data, config_settings["training_columns_to_drop"])
 
+    # Create metrics object
     metrics = Metrics()
 
-    ray_futures = []
-    logging.info(f"Creating the ray objects needed for parallelized execution...")
-    # Repeat for each hospital_id in the dataset:
-    for hospitalid in data["hospitalid"].unique():
-        data_hospital = data[data["hospitalid"] == hospitalid]
-        # Repeat with a different random state:
-        for random_state in range(config_settings["random_split_reps"]):
-            ray_futures.append(
-                single_local_run.remote(
-                    data_hospital,
-                    config_settings["test_size"],
-                    random_state,
-                    config_settings["training_columns_to_drop"],
-                    config_settings["missingness_cutoff"],
-                )
-            )
+    # Determine group and stratification labels
+    groups = data["hospitalid"]
+    stratify_labels = (data.groupby("hospitalid")["label"].transform("sum") > 0).astype(
+        int
+    )
+    print(stratify_labels.value_counts())
 
-    logging.info("Executing local runs...")
-    results = ray.get(ray_futures)
+    # Repeat with different random states
+    for random_state in range(config_settings["random_split_reps"]):
+        single_cv_logo_split_run(
+            data,
+            groups,
+            stratify_labels,
+            random_state,
+            config_settings["training_columns_to_drop"],
+            metrics,
+            config_settings["missingness_cutoff"],
+            config_settings["cv_folds"],
+        )
 
-    logging.info("Extracting results per hospital and random_state...")
-    for hospital_idx, hospitalid in enumerate(data["hospitalid"].unique()):
-        # Extract the results per hospital and random state
-        for random_state in range(config_settings["random_split_reps"]):
-            (y_pred, y_pred_proba, y_test, stay_ids) = results[
-                hospital_idx * config_settings["random_split_reps"] + random_state
-            ]
-
-            metrics.add_random_state(random_state)
-            metrics.add_accuracy_value(y_test, y_pred)
-            metrics.add_auroc_value(y_test, y_pred_proba)
-            metrics.add_auprc_value(y_test, y_pred_proba)
-            metrics.add_confusion_matrix(y_test, y_pred)
-            metrics.add_individual_confusion_matrix_values(y_test, y_pred, stay_ids)
-            metrics.add_tn_fp_sum()
-            metrics.add_fpr()
-            metrics.add_hospitalid(hospitalid)
-
-        # Calculate averages accross random states for current hospital_id
-        metrics.add_hospitalid_avg(hospitalid)
+        # Calculate averages accross folds for current random state
+        metrics.add_random_state_avg(random_state)
         metrics.add_metrics_mean(
             [
                 "Accuracy",
@@ -167,10 +171,71 @@ def cml_local_pipeline():
         metrics.add_confusion_matrix_average()
 
     logging.info("Finalizing and saving results...")
+
     # Save normal metrics
     metrics_df = metrics.get_metrics_value_dataframe(
         [
-            "Hospitalid",
+            "Random State",
+            "Fold",
+            "Accuracy",
+            "AUROC",
+            "AUPRC",
+            "Confusion Matrix",
+            "True Negatives",
+            "Stay IDs with True Negatives",
+            "False Positives",
+            "Stay IDs with False Positives",
+            "False Negatives",
+            "Stay IDs with False Negatives",
+            "True Positives",
+            "Stay IDs with True Positives",
+            "TN-FP-Sum",
+            "FPR",
+        ]
+    )
+    save_csv(metrics_df, path["results"], "cml_cv_logo_split_metrics.csv")
+    
+    # Calculate averages
+    metrics.add_random_state_avg("Total Average")
+    metrics.add_metrics_mean(
+        [
+            "Accuracy",
+            "AUROC",
+            "AUPRC",
+            "True Negatives",
+            "Stay IDs with True Negatives",
+            "False Positives",
+            "Stay IDs with False Positives",
+            "False Negatives",
+            "Stay IDs with False Negatives",
+            "True Positives",
+            "Stay IDs with True Positives",
+            "TN-FP-Sum",
+            "FPR",
+        ]
+    )
+    metrics.add_metrics_std(
+        [
+            "Accuracy",
+            "AUROC",
+            "AUPRC",
+            "True Negatives",
+            "Stay IDs with True Negatives",
+            "False Positives",
+            "Stay IDs with False Positives",
+            "False Negatives",
+            "Stay IDs with False Negatives",
+            "True Positives",
+            "Stay IDs with True Positives",
+            "TN-FP-Sum",
+            "FPR",
+        ]
+    )
+    metrics.add_confusion_matrix_average(on_mean_data=True)
+
+    # Save averages
+    metrics_avg_df = metrics.get_metrics_avg_dataframe(
+        [
             "Random State",
             "Accuracy",
             "AUROC",
@@ -188,83 +253,13 @@ def cml_local_pipeline():
             "FPR",
         ]
     )
-    save_csv(metrics_df, path["results"], "cml_local_metrics.csv")
-
-    # Calculate total averages
-    metrics.add_hospitalid_avg("Total Average")
-    metrics.add_metrics_mean(
-        [
-            "Accuracy",
-            "AUROC",
-            "AUPRC",
-            "True Negatives",
-            "Stay IDs with True Negatives",
-            "False Positives",
-            "Stay IDs with False Positives",
-            "False Negatives",
-            "Stay IDs with False Negatives",
-            "True Positives",
-            "Stay IDs with True Positives",
-            "TN-FP-Sum",
-            "FPR",
-        ],
-        on_mean_data=True,
-    )
-    metrics.add_metrics_std(
-        [
-            "Accuracy",
-            "AUROC",
-            "AUPRC",
-            "True Negatives",
-            "Stay IDs with True Negatives",
-            "False Positives",
-            "Stay IDs with False Positives",
-            "False Negatives",
-            "Stay IDs with False Negatives",
-            "True Positives",
-            "Stay IDs with True Positives",
-            "TN-FP-Sum",
-            "FPR",
-        ],
-        on_mean_data=True,
-    )
-    metrics.add_confusion_matrix_average(on_mean_data=True)
-
-    # Save averages
-    metrics_avg_df = metrics.get_metrics_avg_dataframe(
-        [
-            "Hospitalid",
-            "Accuracy",
-            "AUROC",
-            "AUPRC",
-            "Confusion Matrix",
-            "True Negatives",
-            "Stay IDs with True Negatives",
-            "False Positives",
-            "Stay IDs with False Positives",
-            "False Negatives",
-            "Stay IDs with False Negatives",
-            "True Positives",
-            "Stay IDs with True Positives",
-            "TN-FP-Sum",
-            "FPR",
-        ]
-    )
-    save_csv(metrics_avg_df, path["results"], "cml_local_metrics_avg.csv")
+    save_csv(metrics_avg_df, path["results"], "cml_cv_logo_split_metrics_avg.csv")
 
 
 if __name__ == "__main__":
+
     # Initialize the logging capability
     logging.basicConfig(
         level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
     )
-
-    os.environ["PYTHONPATH"] = ".." + os.pathsep + os.environ.get("PYTHONPATH", "")
-
-    # Initialize ray
-    if "SLURM_CPUS_PER_TASK" in os.environ:
-        ray.init(num_cpus=int(os.environ["SLURM_CPUS_PER_TASK"]), _temp_dir="/tmp/")
-    else:
-        ray.init(num_cpus=2, _temp_dir="/tmp/")
-
-    cml_local_pipeline()
+    cml_cv_logo_split_pipeline()

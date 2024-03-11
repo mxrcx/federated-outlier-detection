@@ -12,12 +12,14 @@ filename:
   raw_patient_data: "patient.csv"
   static_data: "sta.parquet"
   dynamic_data: "dyn.parquet"
-  outcome_data: "out.parquet"
+  outcome_data: "outc.parquet"
   combined: "combined.parquet"
   features: "features.parquet"
 
 config_settings:
   random_split_reps: 5 # Number of repetitions for each performed random split of the data
+  cv_folds: 5 # Number of folds for cross-validation
   test_size: 0.2 # Test size for the train-test split
+  missingness_cutoff: 0.7 #
   feature_extraction_columns_to_exclude: ["stay_id", "time", "age", "sex", "height", "weight", "label", "ethnicity", "hospitalid", "unittype", "hospitaladmitoffset", "uniquepid"]
   training_columns_to_drop: ["label", "hospitalid", "stay_id", "uniquepid"] # Columns to drop during training (X_train, X_test)
