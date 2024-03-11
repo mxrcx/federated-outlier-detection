@@ -26,6 +26,10 @@ class Metrics:
             },
             "Random State": {
                 "value": [],
+                "mean": [],
+            },
+            "Fold": {
+                "value": [],
             },
             "Accuracy": {
                 "value": [],
@@ -45,6 +49,46 @@ class Metrics:
             "Confusion Matrix": {
                 "value": [],
                 "mean": [],
+            },
+            "True Negatives": {
+                "value": [],
+                "mean": [],
+                "std": [],
+            },
+            "Stay IDs with True Negatives": {
+                "value": [],
+                "mean": [],
+                "std": [],
+            },
+            "False Positives": {
+                "value": [],
+                "mean": [],
+                "std": [],
+            },
+            "Stay IDs with False Positives": {
+                "value": [],
+                "mean": [],
+                "std": [],
+            },
+            "False Negatives": {
+                "value": [],
+                "mean": [],
+                "std": [],
+            },
+            "Stay IDs with False Negatives": {
+                "value": [],
+                "mean": [],
+                "std": [],
+            },
+            "True Positives": {
+                "value": [],
+                "mean": [],
+                "std": [],
+            },
+            "Stay IDs with True Positives": {
+                "value": [],
+                "mean": [],
+                "std": [],
             },
             "TN-FP-Sum": {
                 "value": [],
@@ -69,7 +113,7 @@ class Metrics:
 
     def add_hospitalid_avg(self, hospitalid):
         """
-        Add hospital ID to metrics dictionary.
+        Add hospital ID to metrics avg dictionary.
 
         Args:
             hospitalid: Hospital ID
@@ -84,6 +128,24 @@ class Metrics:
             random_state: Random state
         """
         self.metrics_dict["Random State"]["value"].append(random_state)
+        
+    def add_random_state_avg(self, random_state):
+        """
+        Add random state to metrics avg dictionary.
+
+        Args:
+            random_state: Random state
+        """
+        self.metrics_dict["Random State"]["mean"].append(random_state)
+
+    def add_fold(self, fold):
+        """
+        Add fold to metrics dictionary.
+
+        Args:
+            fold: Fold
+        """
+        self.metrics_dict["Fold"]["value"].append(fold)
 
     def add_accuracy_value(self, y_true, y_pred):
         """
@@ -162,9 +224,148 @@ class Metrics:
         Args:
             y_true: True labels
             y_pred: Predicted labels
+            stay_ids: Stay IDs
         """
         cm = confusion_matrix(y_true, y_pred)
         self.metrics_dict["Confusion Matrix"]["value"].append(cm)
+
+    def add_false_positives(self, y_true, y_pred, stay_ids):
+        """
+        Add false positives total and number of stay IDs with false positives to metrics dictionary.
+
+        Args:
+            y_true: True labels
+            y_pred: Predicted labels
+            stay_ids: Stay IDs
+        """
+        cm = confusion_matrix(y_true, y_pred)
+        try:
+            fp = cm[0][1]
+        except IndexError:
+            fp = 0
+
+        # Create a DataFrame with stay_ids, y_true, and y_pred
+        df = pd.DataFrame({"stay_id": stay_ids, "y_true": y_true, "y_pred": y_pred})
+
+        # Group by stay_id and calculate the sum of y_true and y_pred for each group
+        group_sums = df.groupby("stay_id").agg({"y_true": "sum", "y_pred": "sum"})
+
+        # Count the number of stay_ids where y_true sum is 0 and y_pred sum is greater than 0
+        stay_ids_with_fp = (
+            (group_sums["y_true"] == 0) & (group_sums["y_pred"] > 0)
+        ).sum()
+
+        self.metrics_dict["False Positives"]["value"].append(fp)
+        self.metrics_dict["Stay IDs with False Positives"]["value"].append(
+            stay_ids_with_fp
+        )
+
+    def add_false_negatives(self, y_true, y_pred, stay_ids):
+        """
+        Add false negatives total and number of stay IDs with false negatives to metrics dictionary.
+
+        Args:
+            y_true: True labels
+            y_pred: Predicted labels
+            stay_ids: Stay IDs
+        """
+        cm = confusion_matrix(y_true, y_pred)
+        try:
+            fn = cm[1][0]
+        except IndexError:
+            fn = 0
+
+        # Create a DataFrame with stay_ids, y_true, and y_pred
+        df = pd.DataFrame({"stay_id": stay_ids, "y_true": y_true, "y_pred": y_pred})
+
+        # Group by stay_id and calculate the sum of y_true and y_pred for each group
+        group_sums = df.groupby("stay_id").agg({"y_true": "sum", "y_pred": "sum"})
+
+        # Count the number of stay_ids where y_true sum is greater than 0 and y_pred sum is 0
+        stay_ids_with_fn = (
+            (group_sums["y_true"] > 0) & (group_sums["y_pred"] == 0)
+        ).sum()
+
+        self.metrics_dict["False Negatives"]["value"].append(fn)
+        self.metrics_dict["Stay IDs with False Negatives"]["value"].append(
+            stay_ids_with_fn
+        )
+
+    def add_true_positives(self, y_true, y_pred, stay_ids):
+        """
+        Add true positives total and number of stay IDs with true positives to metrics dictionary.
+
+        Args:
+            y_true: True labels
+            y_pred: Predicted labels
+            stay_ids: Stay IDs
+        """
+        cm = confusion_matrix(y_true, y_pred)
+        try:
+            tp = cm[1][1]
+        except IndexError:
+            tp = 0
+
+        # Create a DataFrame with stay_ids, y_true, and y_pred
+        df = pd.DataFrame({"stay_id": stay_ids, "y_true": y_true, "y_pred": y_pred})
+
+        # Group by stay_id and calculate the sum of y_true and y_pred for each group
+        group_sums = df.groupby("stay_id").agg({"y_true": "sum", "y_pred": "sum"})
+
+        # Count the number of stay_ids where y_true sum is greater than 0 and y_pred sum is greater than 0
+        stay_ids_with_tp = (
+            (group_sums["y_true"] > 0) & (group_sums["y_pred"] > 0)
+        ).sum()
+
+        self.metrics_dict["True Positives"]["value"].append(tp)
+        self.metrics_dict["Stay IDs with True Positives"]["value"].append(
+            stay_ids_with_tp
+        )
+
+    def add_true_negatives(self, y_true, y_pred, stay_ids):
+        """
+        Add true negatives total and number of stay IDs with true negatives to metrics dictionary.
+
+        Args:
+            y_true: True labels
+            y_pred: Predicted labels
+            stay_ids: Stay IDs
+        """
+        cm = confusion_matrix(y_true, y_pred)
+        try:
+            tn = cm[0][0]
+        except IndexError:
+            tn = 0
+
+        # Create a DataFrame with stay_ids, y_true, and y_pred
+        df = pd.DataFrame({"stay_id": stay_ids, "y_true": y_true, "y_pred": y_pred})
+
+        # Group by stay_id and calculate the sum of y_true and y_pred for each group
+        group_sums = df.groupby("stay_id").agg({"y_true": "sum", "y_pred": "sum"})
+
+        # Count the number of stay_ids where y_true sum is 0 and y_pred sum is 0
+        stay_ids_with_tn = (
+            (group_sums["y_true"] == 0) & (group_sums["y_pred"] == 0)
+        ).sum()
+
+        self.metrics_dict["True Negatives"]["value"].append(tn)
+        self.metrics_dict["Stay IDs with True Negatives"]["value"].append(
+            stay_ids_with_tn
+        )
+
+    def add_individual_confusion_matrix_values(self, y_true, y_pred, stay_ids):
+        """
+        Add individual confusion matrix values to metrics dictionary.
+
+        Args:
+            y_true: True labels
+            y_pred: Predicted labels
+            stay_ids: Stay IDs
+        """
+        self.add_false_positives(y_true, y_pred, stay_ids)
+        self.add_false_negatives(y_true, y_pred, stay_ids)
+        self.add_true_positives(y_true, y_pred, stay_ids)
+        self.add_true_negatives(y_true, y_pred, stay_ids)
 
     def _get_last_confusion_matrix(self):
         """
@@ -234,17 +435,19 @@ class Metrics:
         metric_list = [
             metric for metric in metric_list if metric != "No Sepsis Occurences"
         ]
-        
+
         # Remove "Mean calculation not possible" elements
         metric_list = [
-            metric for metric in metric_list if metric != "Mean calculation not possible"
+            metric
+            for metric in metric_list
+            if metric != "Mean calculation not possible"
         ]
-        
+
         # Remove "Std calculation not possible" elements
         metric_list = [
             metric for metric in metric_list if metric != "Std calculation not possible"
         ]
-        
+
         print(metric_list)
 
         return metric_list

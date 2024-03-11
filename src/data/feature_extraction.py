@@ -7,7 +7,12 @@ import recipys.recipe, recipys.ingredients, recipys.step, recipys.selector
 # append the path of the parent directory
 sys.path.append("..")
 
-from data.loading import load_configuration, load_csv, load_cohort_parquet_files, load_parquet
+from data.loading import (
+    load_configuration,
+    load_csv,
+    load_cohort_parquet_files,
+    load_parquet,
+)
 from data.processing import extend_static_data, merge_cohort_data
 from data.saving import save_parquet, copy_parquet
 
@@ -42,7 +47,12 @@ def combine_cohort_data(path, filename):
     Returns:
         pandas.DataFrame: The combined cohort data.
     """
-    static_data, dynamic_data, outcome_data = load_cohort_parquet_files(path["cohorts"])
+    static_data, dynamic_data, outcome_data = load_cohort_parquet_files(
+        path["cohorts"],
+        filename["static_data"],
+        filename["dynamic_data"],
+        filename["outcome_data"],
+    )
     combined_data = merge_cohort_data(static_data, dynamic_data, outcome_data)
     save_parquet(combined_data, path["interim"], filename["combined"])
 
