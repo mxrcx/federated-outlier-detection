@@ -11,7 +11,8 @@ from data.saving import save_csv
 from data.processing import (
     encode_categorical_columns,
     drop_cols_with_perc_missing,
-    init_imputer,
+    impute,
+    scale,
     reformat_time_column,
 )
 from data.feature_extraction import prepare_cohort_and_extract_features
@@ -35,20 +36,21 @@ def single_random_split_run(
     logging.debug("Splitting data into a train and test subset...")
     train, test = split_data_on_stay_ids(data, test_size, random_state)
 
+    logging.debug("Imputing missing values...")
+    train = impute(train)
+    test = impute(test)
+
     # Define the features and target
     X_train = train.drop(columns=columns_to_drop)
     y_train = train["label"]
     X_test = test.drop(columns=columns_to_drop)
     y_test = test["label"]
 
-    # Perform preprocessing & imputation
     logging.debug("Removing columns with missing values...")
     X_train, X_test = drop_cols_with_perc_missing(X_train, X_test, missingness_cutoff)
 
-    logging.debug("Imputing missing values...")
-    imputer = init_imputer(X_train)
-    X_train = imputer.fit_transform(X_train)
-    X_test = imputer.transform(X_test)
+    # Perform scaling
+    X_train, X_test = scale(X_train, X_test)
 
     # Create & fit the model
     model = RandomForestClassifier(
