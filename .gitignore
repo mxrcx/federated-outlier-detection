@@ -5,9 +5,8 @@
 /results
 
 # sbatch jobs and logs
-src/pipelines/job_cml_local.sh
-src/pipelines/job_cml_loho_split.sh
-src/pipelines/job_cml_random_split.sh
+src/analysis/logs/
+src/data/logs/
 src/pipelines/logs/
 
 # notebook checkpoints
@@ -15,3 +14,6 @@ src/pipelines/logs/
 
 # cache files
 __pycache__
+
+# old files
+src/pipelines/old_files/

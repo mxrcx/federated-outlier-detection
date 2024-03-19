@@ -21,11 +21,13 @@ def load_configuration():
     path = {
         key: config["path"][key]
         for key in [
+            "raw_data",
+            "original_cohorts",
             "cohorts",
             "interim",
             "features",
-            "raw_data",
-            "original_cohorts",
+            "processed",
+            "splits",
             "results",
         ]
     }
@@ -38,6 +40,7 @@ def load_configuration():
             "outcome_data",
             "combined",
             "features",
+            "processed",
         ]
     }
     config_settings = {
@@ -115,13 +118,18 @@ def _optimize_dataframe_footprint(df: pd.DataFrame):
     df_downcast = df.copy()
 
     # Downcast numeric columns to smallest type
-    for col in tqdm(df_downcast.select_dtypes(include=['int', 'float']).columns):
-        df_downcast[col] = pd.to_numeric(df_downcast[col], downcast='integer', errors='ignore')
-        df_downcast[col] = pd.to_numeric(df_downcast[col], downcast='float', errors='ignore')
+    for col in tqdm(df_downcast.select_dtypes(include=["int", "float"]).columns):
+        df_downcast[col] = pd.to_numeric(
+            df_downcast[col], downcast="integer", errors="ignore"
+        )
+        df_downcast[col] = pd.to_numeric(
+            df_downcast[col], downcast="float", errors="ignore"
+        )
 
     return df_downcast
 
-def load_parquet(path, filename, optimize_memory = False):
+
+def load_parquet(path, filename, optimize_memory=False):
     """
     Load data from a parquet file.
 

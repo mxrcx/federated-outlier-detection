@@ -1,7 +1,5 @@
+from typing import List
 import pandas as pd
-from sklearn.impute import SimpleImputer
-from sklearn.pipeline import Pipeline
-from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 
 
@@ -60,7 +58,7 @@ def merge_cohort_data(
 
 
 def encode_categorical_columns(
-    df: pd.DataFrame, columns_to_drop: list[str]
+    df: pd.DataFrame, columns_to_drop: List[str]
 ) -> pd.DataFrame:
     """
     Encode categorical columns in the dataframe. Exclude columns in columns_to_drop.
@@ -156,6 +154,23 @@ def impute(df):
     for col in categorical_columns:
         df.loc[:, col] = df[col].fillna("unknown")
     return df
+
+
+def scale_X_test(X_test):
+    """Scale the numerical features in the test data.
+
+    Args:
+        X_test (pd.DataFrame): The test data (features and target).
+
+    Returns:
+        pd.DataFrame: The scaled test data.
+    """
+    scaler = StandardScaler()
+    numerical_columns_X_test = X_test.select_dtypes(include=["number"]).columns
+    X_test[numerical_columns_X_test] = scaler.fit_transform(
+        X_test[numerical_columns_X_test]
+    )
+    return X_test
 
 
 def scale(X_train, X_test):
