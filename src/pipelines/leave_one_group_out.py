@@ -1,0 +1,128 @@
+import os
+import logging
+import sys
+from sklearn.ensemble import RandomForestClassifier
+
+sys.path.append("..")
+from data.loading import load_parquet, load_configuration
+from data.saving import save_csv
+from data.processing import impute, scale
+from data.make_hospital_splits import make_hospital_splits
+from metrics.metrics import Metrics
+
+
+def single_cv_run(
+    path_to_splits,
+    random_state,
+    cv_folds,
+    columns_to_drop,
+    metrics,
+):
+    """
+    Perform a single run of the stratified group k-fold split pipeline.
+
+    Args:
+        path_to_splits (str): The path to the splits.
+        random_state (int): The random state to use for the model.
+        cv_folds (int): The number of cross-validation folds.
+        columns_to_drop (list): The columns to drop from the training and test data.
+        metrics (Metrics): The metrics object.
+    """
+    # Create the model
+    model = RandomForestClassifier(
+        n_estimators=100,
+        max_depth=7,
+        random_state=random_state,
+        n_jobs=min(16, int(os.environ["SLURM_CPUS_PER_TASK"])),
+    )
+
+    # Perform stratified group k-fold cross-validation
+    for fold in range(cv_folds):
+        train = load_parquet(
+            os.path.join(path_to_splits, "group_hospital_splits"),
+            f"fold{fold}_rstate{random_state}_train.parquet",
+            optimize_memory=True,
+        )
+        test = load_parquet(
+            os.path.join(path_to_splits, "group_hospital_splits"),
+            f"fold{fold}_rstate{random_state}_test.parquet",
+            optimize_memory=True,
+        )
+
+        logging.debug("Imputing missing values...")
+        train = impute(train)
+        test = impute(test)
+
+        # Define the features and target
+        X_train = train.drop(columns=columns_to_drop)
+        y_train = train["label"]
+        X_test = test.drop(columns=columns_to_drop)
+        y_test = test["label"]
+
+        # Perform scaling
+        X_train, X_test = scale(X_train, X_test)
+
+        # Fit model
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        y_pred_proba = model.predict_proba(X_test)
+
+        # Add metrics to the metrics object for each hospital
+        for hospitalid in test["hospitalid"].unique():
+            mask = test["hospitalid"] == hospitalid
+            y_test_hospital = y_test[mask]
+            y_pred_hospital = y_pred[mask]
+            y_pred_proba_hospital = y_pred_proba[mask]
+
+            metrics.add_hospitalid(hospitalid)
+            metrics.add_random_state(random_state)
+            metrics.add_accuracy_value(y_test_hospital, y_pred_hospital)
+            metrics.add_auroc_value(y_test_hospital, y_pred_proba_hospital)
+            metrics.add_auprc_value(y_test_hospital, y_pred_proba_hospital)
+            metrics.add_confusion_matrix(y_test_hospital, y_pred_hospital)
+            metrics.add_individual_confusion_matrix_values(
+                y_test_hospital, y_pred_hospital, test["stay_id"][mask]
+            )
+            metrics.add_tn_fp_sum()
+            metrics.add_fpr()
+
+
+def leave_one_group_out_pipeline():
+    logging.info("Loading configuration...")
+    path, filename, config_settings = load_configuration()
+
+    if not os.path.exists(os.path.join(path["splits"], "group_hospital_splits")):
+        logging.info("Make hospital splits...")
+        make_hospital_splits()
+
+    metrics = Metrics()
+
+    for random_state in range(config_settings["random_split_reps"]):
+        single_cv_run(
+            path["splits"],
+            random_state,
+            config_settings["cv_folds"],
+            config_settings["training_columns_to_drop"],
+            metrics,
+        )
+
+    logging.info("Calculating averages and saving results...")
+    metrics_df = metrics.get_metrics_dataframe(
+        additional_metrics=["Hospitalid", "Random State"]
+    )
+    save_csv(metrics_df, path["results"], "leave_one_group_out_metrics.csv")
+
+    metrics.calculate_averages_per_hospitalid_across_random_states()
+    metrics.calculate_total_averages_across_hospitalids()
+    metrics_avg_df = metrics.get_metrics_dataframe(
+        additional_metrics=["Hospitalid"], avg_metrics=True
+    )
+    save_csv(metrics_avg_df, path["results"], "leave_one_group_out_metrics_avg.csv")
+
+
+if __name__ == "__main__":
+    # Initialize the logging capability
+    logging.basicConfig(
+        level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
+    )
+    leave_one_group_out_pipeline()

@@ -15,6 +15,22 @@ class Metrics:
     Class for calculating metrics.
     """
 
+    METRICS = [
+        "Accuracy",
+        "AUROC",
+        "AUPRC",
+        "True Negatives",
+        "Stay IDs with True Negatives",
+        "False Positives",
+        "Stay IDs with False Positives",
+        "False Negatives",
+        "Stay IDs with False Negatives",
+        "True Positives",
+        "Stay IDs with True Positives",
+        "TN-FP-Sum",
+        "FPR",
+    ]
+
     def __init__(self):
         """
         Constructor. Initialize lists for metrics.
@@ -128,7 +144,7 @@ class Metrics:
             random_state: Random state
         """
         self.metrics_dict["Random State"]["value"].append(random_state)
-        
+
     def add_random_state_avg(self, random_state):
         """
         Add random state to metrics avg dictionary.
@@ -405,7 +421,7 @@ class Metrics:
     def _get_metric_list(
         self,
         metric: str,
-        entries_to_consider: Optional[int] = None,
+        mask: Optional[np.ndarray] = None,
         on_mean_data: bool = False,
     ) -> np.ndarray:
         """
@@ -413,7 +429,7 @@ class Metrics:
 
         Args:
             metric: Metric name
-            entries_to_consider: Number of last entries to consider
+            mask: Mask for filtering
             on_mean_data: If True, get metric list from mean data
 
         Returns:
@@ -424,120 +440,75 @@ class Metrics:
         else:
             metric_list = self.metrics_dict[metric]["value"]
 
-        # If specified: Only consider last entries_to_consider elements
-        if entries_to_consider is not None:
-            metric_list = metric_list[-entries_to_consider:]
+        # If specified: filter elements
+        if mask is not None:
+            metric_list = [
+                value for value, include in zip(metric_list, mask) if include
+            ]
 
-        # Remove "Not defined" elements
-        metric_list = [metric for metric in metric_list if metric != "Not defined"]
-
-        # Remove "No Sepsis Occurences" elements
-        metric_list = [
-            metric for metric in metric_list if metric != "No Sepsis Occurences"
-        ]
-
-        # Remove "Mean calculation not possible" elements
+        # Remove invalid elements
         metric_list = [
             metric
             for metric in metric_list
-            if metric != "Mean calculation not possible"
+            if metric
+            not in [
+                "Not defined",
+                "No Sepsis Occurences",
+                "Mean calculation not possible",
+                "Std calculation not possible",
+            ]
         ]
-
-        # Remove "Std calculation not possible" elements
-        metric_list = [
-            metric for metric in metric_list if metric != "Std calculation not possible"
-        ]
-
-        print(metric_list)
 
         return metric_list
 
-    def add_metric_mean(
-        self,
-        metric: str,
-        metric_list: List[float],
-    ) -> np.ndarray:
+    def _calculate_metric_stat(self, metric_list: List[float], stat_type: str):
         """
-        Add metric mean to metrics dictionary. Consider only the last entries_to_consider entries.
+        Calculate the mean or standard deviation of a metric list.
 
         Args:
-            metric: Metric name
             metric_list: List of metric values
+            stat_type: Type of statistic to calculate ("mean" or "std")
+
+        Returns:
+            float or str: Calculated statistic or error message
         """
         try:
-            metric_mean = round(sum(metric_list) / len(metric_list), 4)
+            if stat_type == "mean":
+                return round(sum(metric_list) / len(metric_list), 4)
+            elif stat_type == "std":
+                return round(np.std(metric_list), 4)
         except Exception:
-            metric_mean = "Mean calculation not possible"
+            return f"{stat_type.capitalize()} calculation not possible"
 
-        self.metrics_dict[metric]["mean"].append(metric_mean)
-
-    def add_metrics_mean(
+    def add_metrics_stats(
         self,
         selected_metrics: List[str],
-        entries_to_consider: Optional[int] = None,
+        mask: Optional[np.ndarray] = None,
         on_mean_data: bool = False,
     ):
         """
-        Add mean to metrics dictionary for selected metrics. Consider only the last entries_to_consider entries.
+        Add mean and standard deviation to metrics dictionary for selected metrics.
 
         Args:
             selected_metrics: List of selected metrics.
-            entries_to_consider: Number of last entries to consider
-            on_mean_data: If True, calculate mean on mean data
+            mask: Mask for filtering
+            on_mean_data: If True, calculate statistics on mean data
         """
         for metric in selected_metrics:
-            metric_list = self._get_metric_list(
-                metric, entries_to_consider, on_mean_data
-            )
-            self.add_metric_mean(metric, metric_list)
-
-    def add_metric_std(
-        self,
-        metric: str,
-        metric_list: List[float],
-    ) -> np.ndarray:
-        """
-        Add metric standard deviation to metrics dictionary. Consider only the last entries_to_consider entries.
-
-        Args:
-            metric: Metric name
-            metric_list: List of metric values
-        """
-        try:
-            metric_std = round(np.std(metric_list), 4)
-        except Exception:
-            metric_std = "Std calculation not possible"
-
-        self.metrics_dict[metric]["std"].append(metric_std)
-
-    def add_metrics_std(
-        self,
-        selected_metrics: List[str],
-        entries_to_consider: Optional[int] = None,
-        on_mean_data: bool = False,
-    ):
-        """
-        Add standard deviation to metrics dictionary for selected metrics. Consider only the last entries_to_consider entries.
-
-        Args:
-            selected_metrics: List of selected metrics.
-            entries_to_consider: Number of last entries to consider
-            on_mean_data: If True, calculate standard deviation on mean data
-        """
-        for metric in selected_metrics:
-            metric_list = self._get_metric_list(
-                metric, entries_to_consider, on_mean_data
-            )
-            self.add_metric_std(metric, metric_list)
+            metric_list = self._get_metric_list(metric, mask, on_mean_data)
+            metric_mean = self._calculate_metric_stat(metric_list, "mean")
+            metric_std = self._calculate_metric_stat(metric_list, "std")
+            self.metrics_dict[metric]["mean"].append(metric_mean)
+            self.metrics_dict[metric]["std"].append(metric_std)
 
     def add_confusion_matrix_average(
-        self, entries_to_consider: Optional[int] = None, on_mean_data: bool = False
+        self, mask: Optional[np.ndarray] = None, on_mean_data: bool = False
     ):
         """
         Add average confusion matrix to metrics dictionary. Consider only the last entries_to_consider entries.
 
         Args:
-            entries_to_consider: Number of last entries to consider
+            mask: Mask for filtering
             on_mean_data: If True, calculate average on mean data
         """
         if on_mean_data:
@@ -545,53 +516,65 @@ class Metrics:
         else:
             cm_list = self.metrics_dict["Confusion Matrix"]["value"]
 
-        # If specified: Only consider last entries_to_consider elements
-        if entries_to_consider is not None:
-            cm_list = cm_list[-entries_to_consider:]
+        # If specified: filter elements
+        if mask is not None:
+            cm_list = [value for value, include in zip(cm_list, mask) if include]
 
         cm_avg = sum(cm_list)
         self.metrics_dict["Confusion Matrix"]["mean"].append(cm_avg)
 
-    def get_metrics_value_dataframe(self, selected_metrics: List[str]) -> pd.DataFrame:
+    def calculate_averages_across_random_states(self):
+        self.add_random_state_avg("Total Average")
+        self.add_metrics_stats(self.METRICS)
+        self.add_confusion_matrix_average()
+
+    def calculate_averages_per_hospitalid_across_random_states(self):
+        for hospitalid in set(self.metrics_dict["Hospitalid"]["value"]):
+            mask = self.metrics_dict["Hospitalid"]["value"] == hospitalid
+            self.add_hospitalid_avg(hospitalid)
+            self.add_metrics_stats(self.METRICS, mask)
+            self.add_confusion_matrix_average(mask)
+
+    def calculate_total_averages_across_hospitalids(self):
+        self.add_hospitalid_avg("Total Average")
+        self.add_metrics_stats(self.METRICS, on_mean_data=True)
+        self.add_confusion_matrix_average(on_mean_data=True)
+
+    def get_metrics_dataframe(
+        self,
+        selected_metrics: Optional[List[str]] = None,
+        additional_metrics: Optional[List[str]] = None,
+        avg_metrics: bool = False,
+    ) -> pd.DataFrame:
         """
-        Return a metrics value dataframe from the metrics dictionary. Include only the specified metrics.
+        Return a metrics dataframe from the metrics dictionary. Include only the specified metrics.
 
         Args:
-            selected_metrics: List of selected metrics.
+            selected_metrics: List of selected metrics. If none, use the standard metrics.
+            additional_metrics: List of metrics to include, in addition to the standard metrics.
+            avg_metrics: If True, return the average metrics dataframe.
 
         Returns:
             pd.DataFrame: The metrics dataframe.
         """
+        if selected_metrics is None:
+            selected_metrics = self.METRICS
+
+        if additional_metrics is not None:
+            selected_metrics = additional_metrics + selected_metrics
+
         # Create a dictionary to save the filtered metrics data
-        filtered_metrics_value_dict = {}
+        filtered_metrics_dict = {}
 
         # Iterate over the outer keys and extract the sublevels for each key
         for key, value in self.metrics_dict.items():
             if key in selected_metrics:
-                if "value" in value:
-                    filtered_metrics_value_dict[key] = value["value"]
+                if avg_metrics:
+                    if "mean" in value:
+                        filtered_metrics_dict[key + " Mean"] = value["mean"]
+                    if "std" in value:
+                        filtered_metrics_dict[key + " Std"] = value["std"]
+                else:
+                    filtered_metrics_dict[key] = value["value"]
 
-        return pd.DataFrame(filtered_metrics_value_dict)
-
-    def get_metrics_avg_dataframe(self, selected_metrics: List[str]) -> pd.DataFrame:
-        """
-        Return a metrics average dataframe from the metrics dictionary. Include only the specified metrics.
-
-        Args:
-            selected_metrics: List of selected metrics.
-
-        Returns:
-            pd.DataFrame: The metrics dataframe.
-        """
-        # Create a dictionary to save the filtered metrics data
-        filtered_metrics_avg_dict = {}
-
-        # Iterate over the outer keys and extract the sublevels for each key
-        for key, value in self.metrics_dict.items():
-            if key in selected_metrics:
-                if "mean" in value:
-                    filtered_metrics_avg_dict[key + " Mean"] = value["mean"]
-                if "std" in value:
-                    filtered_metrics_avg_dict[key + " Std"] = value["std"]
-
-        return pd.DataFrame(filtered_metrics_avg_dict)
+        return pd.DataFrame(filtered_metrics_dict)

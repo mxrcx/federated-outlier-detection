@@ -5,7 +5,9 @@ path:
   original_cohorts: "../../data/cohorts/sepsis_eicu_robin"
   cohorts: "../../data/cohorts/sepsis_eicu_extended"
   interim: "../../data/interim"
-  features: "../../data/processed"
+  features: "../../data/interim"
+  processed: "../../data/processed"
+  splits: "../../data/splits"
   results: "../../results"
 
 filename:
@@ -15,6 +17,7 @@ filename:
   outcome_data: "outc.parquet"
   combined: "combined.parquet"
   features: "features.parquet"
+  processed: "processed.parquet"
 
 config_settings:
   random_split_reps: 5 # Number of repetitions for each performed random split of the data

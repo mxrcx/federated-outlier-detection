@@ -30,35 +30,28 @@ from flwr.common import (
 )
 import xgboost as xgb
 
-from data.loading import load_configuration
 from data.processing import impute, scale
-from training.preparation import split_data_on_stay_ids
 
 
 class XGBClient(fl.client.Client):
     def __init__(
         self,
         cid: str,
-        data: pd.DataFrame,
+        train: pd.DataFrame,
+        test: pd.DataFrame,
+        training_columns_to_drop: list,
     ):
         self.bst = None  # keep the Booster objects that remain consistent across rounds
         self.config = None
-
-        _path, _filename, config_settings = load_configuration()
-
-        log(INFO, f"Client {cid} - Inital data shape: {data.shape}")
-
-        # Split the data into training and test set based on stay_id
-        train, test = split_data_on_stay_ids(data=data, test_size=0.2, random_state=0)
 
         # Perform imputation
         train = impute(train)
         test = impute(test)
 
         # Define the features and target
-        X_train = train.drop(columns=config_settings["training_columns_to_drop"])
+        X_train = train.drop(columns=training_columns_to_drop)
         y_train = train["label"]
-        X_valid = test.drop(columns=config_settings["training_columns_to_drop"])
+        X_valid = test.drop(columns=training_columns_to_drop)
         y_valid = test["label"]
 
         # Perform scaling
@@ -73,8 +66,7 @@ class XGBClient(fl.client.Client):
             f"Client {cid} - X_train shape: {X_train.shape} - X_valid shape: {X_valid.shape}",
         )
 
-        # Reformat data to DMatrix for xgboost
-        log(INFO, f"Reformatting data for client {cid}...")
+        log(INFO, f"Reformatting data to DMatrix for client {cid}...")
         self.train_dmatrix = xgb.DMatrix(X_train, label=y_train)
         self.valid_dmatrix = xgb.DMatrix(X_valid, label=y_valid)
 
