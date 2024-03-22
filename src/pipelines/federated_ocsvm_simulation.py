@@ -10,18 +10,18 @@ import numpy as np
 
 import flwr as fl
 from flwr.common.logger import log
-from flwr.server.strategy import FedXgbBagging
-from federated_xgboost_client import XGBClient
+from flwr.server.strategy import FedAvg
+from federated_ocsvm_client import OCSVMClient
 
 from data.loading import load_parquet, load_configuration
 from data.saving import save_csv
 from data.make_hospital_splits import make_hospital_splits
 from data.processing import impute, scale_X_test
 from metrics.metrics import Metrics
-import xgboost as xgb
+from sklearn.svm import OneClassSVM
 
 # FL experimental settings
-NUM_CLIENTS = 131  # 131
+NUM_CLIENTS = 20  # 131
 NUM_ROUNDS = 10
 
 # Persistent storage
@@ -67,7 +67,7 @@ def evaluate_metrics_aggregation(eval_metrics):
 
 # Define strategy
 def get_strategy(random_state):
-    strategy = FedXgbBagging(
+    strategy = FedAvg(
         fraction_fit=0.45,  # Sample 45% of available clients for training
         fraction_evaluate=0.175,  # Sample 22.5% of available clients for evaluation
         min_fit_clients=10,  # Never sample less than 10 clients for training
@@ -75,7 +75,7 @@ def get_strategy(random_state):
         min_available_clients=max(
             10, int(NUM_CLIENTS * 0.45)
         ),  # Wait until at least 35% of clients are available
-        evaluate_function=get_server_evaluate(random_state),
+        evaluate_fn=get_server_evaluate(random_state),
         evaluate_metrics_aggregation_fn=evaluate_metrics_aggregation,
     )
 
@@ -109,7 +109,7 @@ def get_client_fn(path_to_splits, hospitalids, random_state, training_columns_to
         )
 
         # Create and return client
-        return XGBClient(client_id, train, test, training_columns_to_drop).to_client()
+        return OCSVMClient(client_id, train, test, training_columns_to_drop).to_client()
 
     return client_fn
 
@@ -121,16 +121,17 @@ def evaluate_model_on_all_clients(
     training_columns_to_drop,
     metrics,
 ):
-    for random_state in range(random_split_reps):
+    for random_state in range(1):  # random_split_reps):
         # Create an evaluation model and set its "weights" to the last saved during fl simulation
         logging.info("Create eval model with last saved params...")
-        eval_model = xgb.XGBClassifier()
+        eval_model = OneClassSVM(kernel="linear", nu=0.01)
         global_model = None
+        print(persistent_storage[f"last_model_params_rstate{random_state}"])
         for item in persistent_storage[
             f"last_model_params_rstate{random_state}"
         ].tensors:
             global_model = bytearray(item)
-        eval_model.load_model(global_model)
+        eval_model.set_params(global_model)
 
         logging.info("Evaluate model on all clients...")
         for hospitalid in hospitalids:
@@ -152,7 +153,10 @@ def evaluate_model_on_all_clients(
 
             # Evaluate
             y_pred = eval_model.predict(X_test)
-            y_pred_proba = eval_model.predict_proba(X_test)
+            # y_pred_proba = eval_model.predict_proba(X_test)
+            y_pred_proba = eval_model.decision_function(
+                X_test
+            )  # find alternative to predict_proba!!
 
             metrics.add_hospitalid(hospitalid)
             metrics.add_random_state(random_state)
@@ -167,7 +171,7 @@ def evaluate_model_on_all_clients(
             metrics.add_fpr()
 
 
-def run_federated_xgboost_simulation():
+def run_federated_ocsvm_simulation():
     logging.info("Loading configuration...")
     path, filename, config_settings = load_configuration()
 
@@ -180,7 +184,7 @@ def run_federated_xgboost_simulation():
 
     # Launch the simulation with differnt random_state
     metrics = Metrics()
-    for random_state in range(config_settings["random_split_reps"]):
+    for random_state in range(1):  # config_settings["random_split_reps"]):
         hist = fl.simulation.start_simulation(
             client_fn=get_client_fn(
                 path["splits"],
@@ -210,14 +214,14 @@ def run_federated_xgboost_simulation():
     metrics_df = metrics.get_metrics_dataframe(
         additional_metrics=["Hospitalid", "Random State"]
     )
-    save_csv(metrics_df, path["results"], "federated_xgboost_metrics.csv")
+    save_csv(metrics_df, path["results"], "federated_ocsvm_metrics.csv")
 
     metrics.calculate_averages_per_hospitalid_across_random_states()
     metrics.calculate_total_averages_across_hospitalids()
     metrics_avg_df = metrics.get_metrics_dataframe(
         additional_metrics=["Hospitalid"], avg_metrics=True
     )
-    save_csv(metrics_avg_df, path["results"], "federated_xgboost_metrics_avg.csv")
+    save_csv(metrics_avg_df, path["results"], "federated_ocsvm_metrics_avg.csv")
 
 
 if __name__ == "__main__":
@@ -226,4 +230,4 @@ if __name__ == "__main__":
         level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
     )
 
-    run_federated_xgboost_simulation()
+    run_federated_ocsvm_simulation()

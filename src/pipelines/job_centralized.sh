@@ -3,9 +3,9 @@
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=marco.schaarschmidt@student.hpi.de
 #SBATCH --partition=cpu # -p
-#SBATCH --cpus-per-task=22 # -c
-#SBATCH --mem=80gb
+#SBATCH --cpus-per-task=86 # -c
+#SBATCH --mem=800gb
 #SBATCH --time=48:00:00 # 48 hours
 #SBATCH --output=logs/job_%j.log # %j is job id
 
-conda run -n fedout-det python3 centralized_learning_random_split.py
+conda run -n fedout-det python3 centralized.py

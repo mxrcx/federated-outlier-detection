@@ -6,30 +6,41 @@ from data.saving import save_csv
 
 
 def load_csv_files():
-    """Load LOHO and local analysis dataframes
+    """Load CSV files with avg metrics
 
     Returns:
-        pd.DataFrame: LOHO avg dataframe
-        pd.DataFrame: Local avg dataframe
+        pd.DataFrame: Leave-one-group-out avg dataframe
+        pd.DataFrame: Local learning avg dataframe
+        pd.DataFrame: Federated XGBoost avg dataframe
     """
-    data_loho_avg = load_csv("../../results", "cml_loho_split_metrics_avg.csv")
-    data_local_avg = load_csv("../../results", "cml_local_metrics_avg.csv")
+    results_logo_avg = load_csv("../../results", "leave_one_group_out_metrics_avg.csv")
+    results_local_avg = load_csv("../../results", "local_learning_metrics_avg.csv")
+    results_federated_avg = load_csv(
+        "../../results", "federated_xgboost_metrics_avg.csv"
+    )
 
-    return data_loho_avg, data_local_avg
+    return results_logo_avg, results_local_avg, results_federated_avg
 
 
-def combine_loho_local(data_loho_avg, data_local_avg):
-    """Combine LOHO and local analysis dataframes
+def combine_results(results_logo_avg, results_local_avg, results_federated_avg):
+    """Combine result dataframes
 
     Args:
-        data_loho_avg (pd.DataFrame): LOHO avg dataframe
-        data_local_avg (pd.DataFrame): Local avg dataframe
+        results_logo_avg (pd.DataFrame): Leave-one-group-out avg dataframe
+        results_local_avg (pd.DataFrame): Local learning avg dataframe
+        results_federated_avg (pd.DataFrame): Federated XGBoost avg dataframe
 
     Returns:
         pd.DataFrame: Combined dataframe
     """
-    combined_df = data_loho_avg.join(data_local_avg, lsuffix="_loho", rsuffix="_local")
+    combined_df = results_logo_avg.join(
+        results_local_avg, lsuffix="_logo", rsuffix="_local"
+    )
+    results_federated_avg = results_federated_avg.add_suffix("_fed")
+    combined_df = combined_df.join(results_federated_avg)
+
     combined_df = combined_df.drop(columns=["Hospitalid Mean_local"])
+    combined_df = combined_df.drop(columns=["Hospitalid Mean_fed"])
     combined_df = combined_df.rename(
         columns={
             "Hospitalid Mean_loho": "Hospitalid Mean",
@@ -58,7 +69,7 @@ def replace_string_with_nan(df, exclude_columns=[]):
 
 
 def calculate_differences(combined_df):
-    """Calculate differences between LOHO and local metrics on non NaN values
+    """Calculate differences between metrics on non NaN values
 
     Args:
         combined_df (pd.DataFrame): Combined dataframe
@@ -79,14 +90,24 @@ def calculate_differences(combined_df):
         ("True Positives", "TP"),
         ("Stay IDs with True Positives", "TP Stay IDs"),
     ]
+
     for org_colname, diff_colname in difference_colnames:
         numeric_cases = combined_df[
-            (~combined_df[f"{org_colname} Mean_loho"].isna())
+            (~combined_df[f"{org_colname} Mean_logo"].isna())
             & (~combined_df[f"{org_colname} Mean_local"].isna())
+            & (~combined_df[f"{org_colname} Mean_fed"].isna())
         ]
-        combined_df[f"{diff_colname} Difference"] = (
-            numeric_cases[f"{org_colname} Mean_loho"]
+        combined_df[f"{diff_colname} Difference LOGO-Local"] = (
+            numeric_cases[f"{org_colname} Mean_logo"]
             - numeric_cases[f"{org_colname} Mean_local"]
+        )
+        combined_df[f"{diff_colname} Difference LOGO-Fed"] = (
+            numeric_cases[f"{org_colname} Mean_logo"]
+            - numeric_cases[f"{org_colname} Mean_fed"]
+        )
+        combined_df[f"{diff_colname} Difference Local-Fed"] = (
+            numeric_cases[f"{org_colname} Mean_local"]
+            - numeric_cases[f"{org_colname} Mean_fed"]
         )
     return combined_df
 
@@ -117,14 +138,20 @@ def create_average_diff(combined_df):
         "TP Stay IDs",
     ]
     average_diff_data = {}
+    comparison_suffixes = ["LOGO-Local", "LOGO-Fed", "Local-Fed"]
 
     for colname in average_diff_colnames:
-        average_diff_data[f"{colname} Difference Mean"] = [
-            combined_df_except_last_row[f"{colname} Difference"].mean()
-        ]
-        average_diff_data[f"{colname} Difference Std"] = [
-            combined_df_except_last_row[f"{colname} Difference"].std()
-        ]
+        for comparison_suffix in comparison_suffixes:
+            average_diff_data[f"{colname} Difference {comparison_suffix} Mean"] = [
+                combined_df_except_last_row[
+                    f"{colname} Difference {comparison_suffix}"
+                ].mean()
+            ]
+            average_diff_data[f"{colname} Difference {comparison_suffix}  Std"] = [
+                combined_df_except_last_row[
+                    f"{colname} Difference {comparison_suffix}"
+                ].std()
+            ]
 
     average_diff = pd.DataFrame(average_diff_data)
     return average_diff
@@ -156,43 +183,49 @@ def convert_cm_columns(df):
     Returns:
         pd.DataFrame: Processed dataframe
     """
-    df["Confusion Matrix Mean_loho"] = df["Confusion Matrix Mean_loho"].apply(
+    df["Confusion Matrix Mean_logo"] = df["Confusion Matrix Mean_logo"].apply(
         convert_cm_string
     )
     df["Confusion Matrix Mean_local"] = df["Confusion Matrix Mean_local"].apply(
+        convert_cm_string
+    )
+    df["Confusion Matrix Mean_fed"] = df["Confusion Matrix Mean_fed"].apply(
         convert_cm_string
     )
 
     return df
 
 
-def cml_analysis():
+def analysis():
     """Perform CML analysis"""
     # Step 1 - Load data
-    analysis_loho_avg, analysis_local_avg = load_csv_files()
+    results_logo_avg, results_local_avg, results_federated_avg = load_csv_files()
 
     # Step 2 - Combine data
-    combined_df = combine_loho_local(analysis_loho_avg, analysis_local_avg)
+    combined_df = combine_results(
+        results_logo_avg, results_local_avg, results_federated_avg
+    )
 
     # Step 3 - Processing
     combined_df = replace_string_with_nan(
         combined_df,
         [
             "Hospitalid Mean",
-            "Confusion Matrix Mean_loho",
-            "Confusion Matrix Mean_local",
+            # "Confusion Matrix Mean_logo",
+            # "Confusion Matrix Mean_local",
+            # "Confusion Matrix Mean_fed",
         ],
     )
-    combined_df = convert_cm_columns(combined_df)
+    # combined_df = convert_cm_columns(combined_df)
 
     # Step 4 - Get individual differences
     combined_df = calculate_differences(combined_df)
-    save_csv(combined_df, "../../results", "cml_comparison_loho_local.csv")
+    save_csv(combined_df, "../../results", "analysis_diff.csv")
 
     # Step 5 - Get average differences
     average_diff = create_average_diff(combined_df)
-    save_csv(average_diff, "../../results", "cml_comparison_loho_local_avg_diff.csv")
+    save_csv(average_diff, "../../results", "analysis_diff_avg.csv")
 
 
 if __name__ == "__main__":
-    cml_analysis()
+    analysis()
