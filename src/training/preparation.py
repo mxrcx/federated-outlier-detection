@@ -73,18 +73,17 @@ def get_model(model_name, random_state, n_jobs):
     elif model_name in ["xgboostclassifier", "xgboost"]:
         import xgboost as xgb
 
-        xgb_params = {
-            "eval_metric": "aucpr",  # "auc" or "aucpr"
-            "eta": 0.1,  # Learning rate
-            "max_depth": 8,
-            "num_parallel_tree": 1,
-            "subsample": 1,
-            "colsample_bytree": 1,
-            "reg_lambda": 1,
-            "objective": "binary:logistic",
-            "tree_method": "hist",
-        }
-        return xgb.XGBClassifier(params=xgb_params)
+        return xgb.XGBClassifier(
+            eval_metric="aucpr",
+            learning_rate=0.1,
+            max_depth=8,
+            num_parallel_tree=1,
+            subsample=1,
+            colsample_bytree=1,
+            reg_lambda=1,
+            objective="binary:logistic",
+            tree_method="hist",
+        )
     elif model_name in ["isolationforest", "if"]:
         from sklearn.ensemble import IsolationForest
 
