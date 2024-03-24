@@ -3,6 +3,7 @@ import numpy as np
 
 from sklearn.model_selection import train_test_split
 
+
 def split_data_on_stay_ids(data: pd.DataFrame, test_size: float, random_state: int):
     """
     Split data based on stay_ids.
@@ -16,23 +17,87 @@ def split_data_on_stay_ids(data: pd.DataFrame, test_size: float, random_state: i
         train (pd.DataFrame): The training data.
         test (pd.DataFrame): The test data.
     """
-    
+
     # Initialize an empty list to store labels
-    stay_ids_with_labels = data[["stay_id", "label"]].groupby(by="stay_id").sum()    
-    
+    stay_ids_with_labels = data[["stay_id", "label"]].groupby(by="stay_id").sum()
+
     stay_ids = stay_ids_with_labels.index
-    labels = stay_ids_with_labels.iloc[:, 0].apply(lambda x: 1 if x>=1 else 0)
+    labels = stay_ids_with_labels.iloc[:, 0].apply(lambda x: 1 if x >= 1 else 0)
 
     # Convert labels to numpy array
     labels = labels.values
 
     if labels.sum() > 1:
-        train_stay_ids, test_stay_ids = train_test_split(stay_ids, test_size=test_size, random_state=random_state, shuffle=True, stratify=labels)
+        train_stay_ids, test_stay_ids = train_test_split(
+            stay_ids,
+            test_size=test_size,
+            random_state=random_state,
+            shuffle=True,
+            stratify=labels,
+        )
     else:
-        train_stay_ids, test_stay_ids = train_test_split(stay_ids, test_size=test_size, random_state=random_state, shuffle=True)
+        train_stay_ids, test_stay_ids = train_test_split(
+            stay_ids, test_size=test_size, random_state=random_state, shuffle=True
+        )
 
     # Create training and test datasets
     train = data[data["stay_id"].isin(train_stay_ids)]
     test = data[data["stay_id"].isin(test_stay_ids)]
 
     return train, test
+
+
+def get_model(model_name, random_state, n_jobs):
+    """
+    Get a model object based on the model name.
+
+    Args:
+        model_name (str): The name of the model.
+        random_state (int): The random state to be used.
+        n_jobs (int): The number of jobs to run in parallel.
+
+    Returns:
+        model: The model object.
+    """
+    model_name = model_name.lower().replace(" ", "")
+
+    if model_name in ["randomforestclassifier", "randomforest", "rf"]:
+        from sklearn.ensemble import RandomForestClassifier
+
+        return RandomForestClassifier(
+            n_estimators=100,
+            max_depth=7,
+            random_state=random_state,
+            n_jobs=n_jobs,
+        )
+    elif model_name in ["xgboostclassifier", "xgboost"]:
+        import xgboost as xgb
+
+        xgb_params = {
+            "eval_metric": "aucpr",  # "auc" or "aucpr"
+            "eta": 0.1,  # Learning rate
+            "max_depth": 8,
+            "num_parallel_tree": 1,
+            "subsample": 1,
+            "colsample_bytree": 1,
+            "reg_lambda": 1,
+            "objective": "binary:logistic",
+            "tree_method": "hist",
+        }
+        return xgb.XGBClassifier(params=xgb_params)
+    elif model_name in ["isolationforest", "if"]:
+        from sklearn.ensemble import IsolationForest
+
+        return IsolationForest(random_state=random_state, n_jobs=n_jobs)
+    elif model_name in ["gaussianmixture", "gaussianmixturemodel", "gm", "gmm"]:
+        from sklearn.mixture import GaussianMixture
+
+        return GaussianMixture(n_components=1, random_state=random_state)
+    elif model_name in ["oneclasssvm", "ocsvm"]:
+        from sklearn.svm import OneClassSVM
+
+        return OneClassSVM(kernel="linear", nu=0.01)
+    else:
+        raise ValueError(
+            "Invalid model name. Specifiy a different model in the configuration file, choose from: 'randomforestclassifier', 'xgboostclassifier', 'isolationforest', 'gaussianmixture', 'oneclasssvm'"
+        )

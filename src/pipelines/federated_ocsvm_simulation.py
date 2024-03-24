@@ -21,7 +21,7 @@ from metrics.metrics import Metrics
 from sklearn.svm import OneClassSVM
 
 # FL experimental settings
-NUM_CLIENTS = 20  # 131
+NUM_CLIENTS = 10  # 131
 NUM_ROUNDS = 10
 
 # Persistent storage
@@ -70,10 +70,10 @@ def get_strategy(random_state):
     strategy = FedAvg(
         fraction_fit=0.45,  # Sample 45% of available clients for training
         fraction_evaluate=0.175,  # Sample 22.5% of available clients for evaluation
-        min_fit_clients=10,  # Never sample less than 10 clients for training
-        min_evaluate_clients=5,  # Never sample less than 5 clients for evaluation
+        min_fit_clients=6,  # Never sample less than 10 clients for training
+        min_evaluate_clients=3,  # Never sample less than 5 clients for evaluation
         min_available_clients=max(
-            10, int(NUM_CLIENTS * 0.45)
+            6, int(NUM_CLIENTS * 0.45)
         ),  # Wait until at least 35% of clients are available
         evaluate_fn=get_server_evaluate(random_state),
         evaluate_metrics_aggregation_fn=evaluate_metrics_aggregation,
