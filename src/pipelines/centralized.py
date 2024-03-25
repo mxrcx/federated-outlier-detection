@@ -63,20 +63,23 @@ def single_cv_run(
         # Fit model
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
-        y_pred_proba = model.predict_proba(X_test)
+        try:
+            y_score = model.predict_proba(X_test)
+        except AttributeError:
+            y_score = model.decision_function(X_test)
 
         # Add metrics to the metrics object for each hospital
         for hospitalid in test["hospitalid"].unique():
             mask = test["hospitalid"] == hospitalid
             y_test_hospital = y_test[mask]
             y_pred_hospital = y_pred[mask]
-            y_pred_proba_hospital = y_pred_proba[mask]
+            y_score_hospital = y_score[mask]
 
             metrics.add_hospitalid(hospitalid)
             metrics.add_random_state(random_state)
             metrics.add_accuracy_value(y_test_hospital, y_pred_hospital)
-            metrics.add_auroc_value(y_test_hospital, y_pred_proba_hospital)
-            metrics.add_auprc_value(y_test_hospital, y_pred_proba_hospital)
+            metrics.add_auroc_value(y_test_hospital, y_score_hospital)
+            metrics.add_auprc_value(y_test_hospital, y_score_hospital)
             metrics.add_confusion_matrix(y_test_hospital, y_pred_hospital)
             metrics.add_individual_confusion_matrix_values(
                 y_test_hospital, y_pred_hospital, test["stay_id"][mask]

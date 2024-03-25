@@ -51,9 +51,12 @@ def single_local_run(train, test, model_name, random_state, columns_to_drop):
     # Predict the test set
     logging.debug("Predicting the test set...")
     y_pred = model.predict(X_test)
-    y_pred_proba = model.predict_proba(X_test)
+    try:
+        y_score = model.predict_proba(X_test)
+    except AttributeError:
+        y_score = model.decision_function(X_test)
 
-    return (y_pred, y_pred_proba, y_test, test["stay_id"])
+    return (y_pred, y_score, y_test, test["stay_id"])
 
 
 def local_learning_pipeline():
@@ -101,15 +104,15 @@ def local_learning_pipeline():
     for hospital_idx, hospitalid in enumerate(hospitalids):
         # Extract the results per hospital and random state
         for random_state in range(config_settings["random_split_reps"]):
-            (y_pred, y_pred_proba, y_test, stay_ids) = results[
+            (y_pred, y_score, y_test, stay_ids) = results[
                 hospital_idx * config_settings["random_split_reps"] + random_state
             ]
 
             metrics.add_hospitalid(hospitalid)
             metrics.add_random_state(random_state)
             metrics.add_accuracy_value(y_test, y_pred)
-            metrics.add_auroc_value(y_test, y_pred_proba)
-            metrics.add_auprc_value(y_test, y_pred_proba)
+            metrics.add_auroc_value(y_test, y_score)
+            metrics.add_auprc_value(y_test, y_score)
             metrics.add_confusion_matrix(y_test, y_pred)
             metrics.add_individual_confusion_matrix_values(y_test, y_pred, stay_ids)
             metrics.add_tn_fp_sum()
