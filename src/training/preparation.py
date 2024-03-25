@@ -47,6 +47,30 @@ def split_data_on_stay_ids(data: pd.DataFrame, test_size: float, random_state: i
     return train, test
 
 
+def reformatting_model_name(model_name):
+    """Reformat the model name to a standard format.
+
+    Args:
+        model_name (str): The model name.
+
+    Returns:
+        str: The reformatted model name.
+    """
+    model_name = model_name.lower().replace(" ", "")
+    if model_name in ["randomforestclassifier", "randomforest", "rf"]:
+        return "randomforestclassifier"
+    elif model_name in ["xgboostclassifier", "xgboost"]:
+        return "xgboostclassifier"
+    elif model_name in ["isolationforest", "if"]:
+        return "isolationforest"
+    elif model_name in ["gaussianmixture", "gaussianmixturemodel", "gm", "gmm"]:
+        return "gaussianmixture"
+    elif model_name in ["oneclasssvm", "ocsvm"]:
+        return "oneclasssvm"
+    else:
+        return model_name
+
+
 def get_model(model_name, random_state, n_jobs):
     """
     Get a model object based on the model name.
@@ -59,9 +83,9 @@ def get_model(model_name, random_state, n_jobs):
     Returns:
         model: The model object.
     """
-    model_name = model_name.lower().replace(" ", "")
+    model_name = reformatting_model_name(model_name)
 
-    if model_name in ["randomforestclassifier", "randomforest", "rf"]:
+    if model_name == "randomforestclassifier":
         from sklearn.ensemble import RandomForestClassifier
 
         return RandomForestClassifier(
@@ -70,7 +94,7 @@ def get_model(model_name, random_state, n_jobs):
             random_state=random_state,
             n_jobs=n_jobs,
         )
-    elif model_name in ["xgboostclassifier", "xgboost"]:
+    elif model_name == "xgboostclassifier":
         import xgboost as xgb
 
         return xgb.XGBClassifier(
@@ -84,15 +108,15 @@ def get_model(model_name, random_state, n_jobs):
             objective="binary:logistic",
             tree_method="hist",
         )
-    elif model_name in ["isolationforest", "if"]:
+    elif model_name == "isolationforest":
         from sklearn.ensemble import IsolationForest
 
         return IsolationForest(random_state=random_state, n_jobs=n_jobs)
-    elif model_name in ["gaussianmixture", "gaussianmixturemodel", "gm", "gmm"]:
+    elif model_name == "gaussianmixture":
         from sklearn.mixture import GaussianMixture
 
         return GaussianMixture(n_components=1, random_state=random_state)
-    elif model_name in ["oneclasssvm", "ocsvm"]:
+    elif model_name == "oneclasssvm":
         from sklearn.svm import OneClassSVM
 
         return OneClassSVM(kernel="linear", nu=0.01)

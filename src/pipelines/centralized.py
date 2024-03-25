@@ -8,7 +8,7 @@ from data.saving import save_csv
 from data.processing import impute, scale
 from data.make_hospital_splits import make_hospital_splits
 from metrics.metrics import Metrics
-from training.preparation import get_model
+from training.preparation import get_model, reformatting_model_name
 
 
 def single_cv_run(
@@ -87,8 +87,8 @@ def single_cv_run(
 
 def leave_one_group_out_pipeline():
     logging.info("Loading configuration...")
-    path, filename, config_settings = load_configuration()
-    model_name = config_settings["model"].lower().replace(" ", "")
+    path, _filename, config_settings = load_configuration()
+    model_name = reformatting_model_name(config_settings["model"])
 
     if not os.path.exists(os.path.join(path["splits"], "group_hospital_splits")):
         logging.info("Make hospital splits...")
