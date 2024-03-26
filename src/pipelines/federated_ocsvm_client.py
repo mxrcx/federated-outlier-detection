@@ -32,6 +32,7 @@ from sklearn.svm import OneClassSVM
 from sklearn.metrics import average_precision_score
 
 from data.processing import impute, scale
+import pickle
 
 
 class OCSVMClient(fl.client.Client):
@@ -130,7 +131,10 @@ class OCSVMClient(fl.client.Client):
             self.model.fit(self.X_train)
 
         local_model = self.model.get_params()
-        local_model_bytes = bytes(local_model)
+        print(local_model)
+
+        pickled_model = pickle.dumps(self.model)
+        local_model_bytes = bytes(pickled_model)
 
         return FitRes(
             status=Status(

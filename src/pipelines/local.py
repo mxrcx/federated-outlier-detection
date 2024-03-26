@@ -113,10 +113,10 @@ def local_learning_pipeline():
             metrics.add_accuracy_value(y_test, y_pred)
             metrics.add_auroc_value(y_test, y_score)
             metrics.add_auprc_value(y_test, y_score)
-            metrics.add_confusion_matrix(y_test, y_pred)
+            # metrics.add_confusion_matrix(y_test, y_pred)
             metrics.add_individual_confusion_matrix_values(y_test, y_pred, stay_ids)
-            metrics.add_tn_fp_sum()
-            metrics.add_fpr()
+            # metrics.add_tn_fp_sum()
+            # metrics.add_fpr()
 
     logging.info("Calculating averages and saving results...")
     metrics_df = metrics.get_metrics_dataframe(

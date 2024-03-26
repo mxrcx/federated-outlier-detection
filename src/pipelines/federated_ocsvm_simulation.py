@@ -22,7 +22,7 @@ from sklearn.svm import OneClassSVM
 
 # FL experimental settings
 NUM_CLIENTS = 10  # 131
-NUM_ROUNDS = 10
+NUM_ROUNDS = 1
 
 # Persistent storage
 persistent_storage = {}
@@ -70,10 +70,10 @@ def get_strategy(random_state):
     strategy = FedAvg(
         fraction_fit=0.45,  # Sample 45% of available clients for training
         fraction_evaluate=0.175,  # Sample 22.5% of available clients for evaluation
-        min_fit_clients=6,  # Never sample less than 10 clients for training
-        min_evaluate_clients=3,  # Never sample less than 5 clients for evaluation
+        min_fit_clients=3,  # Never sample less than 10 clients for training
+        min_evaluate_clients=2,  # Never sample less than 5 clients for evaluation
         min_available_clients=max(
-            6, int(NUM_CLIENTS * 0.45)
+            3, int(NUM_CLIENTS * 0.45)
         ),  # Wait until at least 35% of clients are available
         evaluate_fn=get_server_evaluate(random_state),
         evaluate_metrics_aggregation_fn=evaluate_metrics_aggregation,
@@ -163,12 +163,12 @@ def evaluate_model_on_all_clients(
             metrics.add_accuracy_value(y_test, y_pred)
             metrics.add_auroc_value(y_test, y_pred_proba)
             metrics.add_auprc_value(y_test, y_pred_proba)
-            metrics.add_confusion_matrix(y_test, y_pred)
+            # metrics.add_confusion_matrix(y_test, y_pred)
             metrics.add_individual_confusion_matrix_values(
                 y_test, y_pred, test["stay_id"]
             )
-            metrics.add_tn_fp_sum()
-            metrics.add_fpr()
+            # metrics.add_tn_fp_sum()
+            # metrics.add_fpr()
 
 
 def run_federated_ocsvm_simulation():

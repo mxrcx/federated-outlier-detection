@@ -80,12 +80,12 @@ def single_cv_run(
             metrics.add_accuracy_value(y_test_hospital, y_pred_hospital)
             metrics.add_auroc_value(y_test_hospital, y_score_hospital)
             metrics.add_auprc_value(y_test_hospital, y_score_hospital)
-            metrics.add_confusion_matrix(y_test_hospital, y_pred_hospital)
+            # metrics.add_confusion_matrix(y_test_hospital, y_pred_hospital)
             metrics.add_individual_confusion_matrix_values(
                 y_test_hospital, y_pred_hospital, test["stay_id"][mask]
             )
-            metrics.add_tn_fp_sum()
-            metrics.add_fpr()
+            # metrics.add_tn_fp_sum()
+            # metrics.add_fpr()
 
 
 def leave_one_group_out_pipeline():
