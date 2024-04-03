@@ -13,7 +13,9 @@ import sys
 sys.path.append("..")
 
 from logging import INFO
+import logging
 import pandas as pd
+import json
 
 import flwr as fl
 from flwr.common.logger import log
@@ -33,6 +35,14 @@ from sklearn.metrics import average_precision_score
 
 from data.processing import impute, scale
 import pickle
+
+# Configure the logger
+file_handler = logging.FileHandler('app.log', delay=False)
+logger = logging.getLogger(__name__)
+logger.addHandler(file_handler)
+logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 
 class OCSVMClient(fl.client.Client):
@@ -67,6 +77,7 @@ class OCSVMClient(fl.client.Client):
             INFO,
             f"Client {cid} - X_train shape: {self.X_train.shape} - X_valid shape: {self.X_valid.shape}",
         )
+        logger.info(f"Client {cid} - X_train shape: {self.X_train.shape} - X_valid shape: {self.X_valid.shape}")
 
         # Hyperparamters for training
         self.num_local_round = 1
@@ -132,9 +143,16 @@ class OCSVMClient(fl.client.Client):
 
         local_model = self.model.get_params()
         print(local_model)
+        
+        json_string = json.dumps(local_model)
+        local_model_bytes = json_string.encode("utf-8")
+        log(
+            INFO,
+            f"lol {local_model_bytes}",
+        )
 
-        pickled_model = pickle.dumps(self.model)
-        local_model_bytes = bytes(pickled_model)
+        #pickled_model = pickle.dumps(self.model)
+        #local_model_bytes = bytes(pickled_model)
 
         return FitRes(
             status=Status(

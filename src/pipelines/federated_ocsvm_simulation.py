@@ -27,6 +27,14 @@ NUM_ROUNDS = 1
 # Persistent storage
 persistent_storage = {}
 
+# Configure the logger
+file_handler = logging.FileHandler('app.log', delay=False)
+logger = logging.getLogger(__name__)
+logger.addHandler(file_handler)
+logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
 
 def get_server_evaluate(random_state):
     def server_evaluate(
@@ -123,7 +131,7 @@ def evaluate_model_on_all_clients(
 ):
     for random_state in range(1):  # random_split_reps):
         # Create an evaluation model and set its "weights" to the last saved during fl simulation
-        logging.info("Create eval model with last saved params...")
+        logger.info("Create eval model with last saved params...")
         eval_model = OneClassSVM(kernel="linear", nu=0.01)
         global_model = None
         print(persistent_storage[f"last_model_params_rstate{random_state}"])
@@ -133,7 +141,7 @@ def evaluate_model_on_all_clients(
             global_model = bytearray(item)
         eval_model.set_params(global_model)
 
-        logging.info("Evaluate model on all clients...")
+        logger.info("Evaluate model on all clients...")
         for hospitalid in hospitalids:
             test = load_parquet(
                 os.path.join(path_to_splits, "individual_hospital_splits"),
@@ -172,11 +180,11 @@ def evaluate_model_on_all_clients(
 
 
 def run_federated_ocsvm_simulation():
-    logging.info("Loading configuration...")
+    logger.info("Loading configuration...")
     path, filename, config_settings = load_configuration()
 
     if not os.path.exists(os.path.join(path["splits"], "individual_hospital_splits")):
-        logging.info("Make hospital splits...")
+        logger.info("Make hospital splits...")
         make_hospital_splits()
 
     # Load hospitalids
@@ -210,7 +218,7 @@ def run_federated_ocsvm_simulation():
         metrics,
     )
 
-    logging.info("Calculating metric averages and saving results...")
+    logger.info("Calculating metric averages and saving results...")
     metrics_df = metrics.get_metrics_dataframe(
         additional_metrics=["Hospitalid", "Random State"]
     )
