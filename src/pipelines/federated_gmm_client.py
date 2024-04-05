@@ -15,6 +15,7 @@ sys.path.append("..")
 from logging import INFO
 import pandas as pd
 import json
+import pickle
 
 import flwr as fl
 from flwr.common.logger import log
@@ -134,8 +135,11 @@ class GMMClient(fl.client.Client):
         local_model = self.model.get_params()
         print(local_model)
 
-        json_string = json.dumps(local_model)
-        local_model_bytes = json_string.encode("utf-8")
+        #json_string = json.dumps(local_model)
+        #local_model_bytes = json_string.encode("utf-8")
+        #pickled_model = pickle.dumps(self.model)
+        #local_model_bytes = bytes(local_model)
+        local_model_bytes = pickle.dumps(self.model)
         log(
             INFO,
             f"lol {local_model_bytes}",

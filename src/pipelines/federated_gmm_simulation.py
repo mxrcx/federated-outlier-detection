@@ -19,6 +19,7 @@ from data.make_hospital_splits import make_hospital_splits
 from data.processing import impute, scale_X_test
 from metrics.metrics import Metrics
 from sklearn.mixture import GaussianMixture
+from CustomStrategy import CustomStrategy
 
 # FL experimental settings
 NUM_CLIENTS = 20  # 131
@@ -67,7 +68,7 @@ def evaluate_metrics_aggregation(eval_metrics):
 
 # Define strategy
 def get_strategy(random_state):
-    strategy = FedAvg(
+    strategy = CustomStrategy(
         fraction_fit=0.45,  # Sample 45% of available clients for training
         fraction_evaluate=0.175,  # Sample 22.5% of available clients for evaluation
         min_fit_clients=10,  # Never sample less than 10 clients for training
