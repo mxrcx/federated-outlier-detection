@@ -16,6 +16,8 @@ from logging import INFO
 import logging
 import pandas as pd
 import json
+from typing import Tuple, Union, List
+import numpy as np
 
 import flwr as fl
 from flwr.common.logger import log
@@ -34,7 +36,6 @@ from sklearn.svm import OneClassSVM
 from sklearn.metrics import average_precision_score
 
 from data.processing import impute, scale
-import pickle
 
 # Configure the logger
 file_handler = logging.FileHandler('app.log', delay=False)
@@ -119,6 +120,18 @@ class OCSVMClient(fl.client.Client):
                 ),
                 parameters=Parameters(tensor_type="", tensors=[]),
             )
+            
+    def get_model_parameters(model: OneClassSVM) -> Union[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray]]:
+        """Returns the parameters of a scikit-learn OneClassSVM model."""
+        params = [model.coef_, model.offset_]
+        return params
+
+
+    def set_model_params(model: OneClassSVM, params: Union[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray]]) -> OneClassSVM:
+        """Sets the parameters of a scikit-learn OneClassSVM model."""
+        model.coef_ = params[0]
+        model.offset_ = params[1]
+        return model
 
     def fit(self, ins: FitIns) -> FitRes:
         """Trains a model on the client's data using the provided parameters as a starting point.
@@ -143,16 +156,9 @@ class OCSVMClient(fl.client.Client):
 
         local_model = self.model.get_params()
         print(local_model)
-        
         json_string = json.dumps(local_model)
-        local_model_bytes = json_string.encode("utf-8")
-        log(
-            INFO,
-            f"lol {local_model_bytes}",
-        )
-
-        #pickled_model = pickle.dumps(self.model)
-        #local_model_bytes = bytes(pickled_model)
+        local_model_bytes = json_string.encode('utf-8')
+        #local_model_bytes = str(local_model).encode('utf-8')
 
         return FitRes(
             status=Status(

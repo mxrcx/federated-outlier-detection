@@ -32,16 +32,16 @@ class CustomStrategy(FedAvg):
         if not self.accept_failures and failures:
             return None, {}
 
-        if self.inplace:
+        #if self.inplace:
             # Does in-place weighted average of results
-            aggregated_ndarrays = self.aggregate_inplace(results)
-        else:
+            #aggregated_ndarrays = self.aggregate_inplace(results)
+        #else:
             # Convert results
-            weights_results = [
-                (self.parameters_to_ndarrays(fit_res.parameters), fit_res.num_examples)
-                for _, fit_res in results
-            ]
-            aggregated_ndarrays = aggregate(weights_results)
+        weights_results = [
+            (self.parameters_to_ndarrays(fit_res.parameters), fit_res.num_examples)
+            for _, fit_res in results
+        ]
+        aggregated_ndarrays = aggregate(weights_results)
 
         parameters_aggregated = ndarrays_to_parameters(aggregated_ndarrays)
 
@@ -90,6 +90,8 @@ class CustomStrategy(FedAvg):
             fit_res.num_examples / num_examples_total for _, fit_res in results
         ]
 
+        print(f"scaling {scaling_factors[0]}")
+        print(f"JACKPOTTTTTTTTTTT {results[0][1].parameters}")
         # Let's do in-place aggregation
         # Get first result, then add up each other
         params = [
@@ -122,6 +124,7 @@ class CustomStrategy(FedAvg):
         
         liste = [bytes_to_ndarray(tensor) for tensor in parameters.tensors]
         print(f"yoooooooooo {liste}")
+        return liste
     
     def aggregate_ndarrays(self, ndarrays_list: List[List[np.ndarray]]) -> List[np.ndarray]:
         # Implement your custom ndarray aggregation logic here

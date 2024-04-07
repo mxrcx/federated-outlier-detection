@@ -24,3 +24,255 @@ Client 3 - X_train shape: (21607, 117) - X_valid shape: (5535, 117)
 Client 4 - X_train shape: (13158, 117) - X_valid shape: (2730, 117)
 Client 8 - X_train shape: (7929, 117) - X_valid shape: (2495, 117)
 Client 1 - X_train shape: (8840, 117) - X_valid shape: (2868, 117)
+Loading configuration...
+Client 1 - X_train shape: (8840, 117) - X_valid shape: (2868, 117)
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Client 3 - X_train shape: (21607, 117) - X_valid shape: (5535, 117)
+Client 1 - X_train shape: (8840, 117) - X_valid shape: (2868, 117)
+Client 7 - X_train shape: (26184, 117) - X_valid shape: (6323, 117)
+Client 6 - X_train shape: (9828, 117) - X_valid shape: (3238, 117)
+Client 7 - X_train shape: (26184, 117) - X_valid shape: (6323, 117)
+Create eval model with last saved params...
+Loading configuration...
+Client 7 - X_train shape: (26184, 117) - X_valid shape: (6323, 117)
+Client 1 - X_train shape: (8840, 117) - X_valid shape: (2868, 117)
+Client 8 - X_train shape: (7929, 117) - X_valid shape: (2495, 117)
+Client 6 - X_train shape: (9828, 117) - X_valid shape: (3238, 117)
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Client 5 - X_train shape: (40213, 117) - X_valid shape: (10402, 117)
+Client 2 - X_train shape: (243086, 117) - X_valid shape: (59317, 117)
+Create eval model with last saved params...
+Loading configuration...
+Client 3 - X_train shape: (21607, 117) - X_valid shape: (5535, 117)
+Client 7 - X_train shape: (26184, 117) - X_valid shape: (6323, 117)
+Client 9 - X_train shape: (14083, 117) - X_valid shape: (3654, 117)
+Client 6 - X_train shape: (9828, 117) - X_valid shape: (3238, 117)
+Client 3 - X_train shape: (21607, 117) - X_valid shape: (5535, 117)
+Loading configuration...
+Client 7 - X_train shape: (26184, 117) - X_valid shape: (6323, 117)
+Client 4 - X_train shape: (13158, 117) - X_valid shape: (2730, 117)
+Client 1 - X_train shape: (8840, 117) - X_valid shape: (2868, 117)
+Client 8 - X_train shape: (7929, 117) - X_valid shape: (2495, 117)
+Client 3 - X_train shape: (21607, 117) - X_valid shape: (5535, 117)
+Loading configuration...
+Loading configuration...
+Loading configuration...
+Client 9 - X_train shape: (14083, 117) - X_valid shape: (3654, 117)
+Loading configuration...
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Loading configuration...
+Client 9 - X_train shape: (14083, 117) - X_valid shape: (3654, 117)
+Loading configuration...
+Client 5 - X_train shape: (40213, 117) - X_valid shape: (10402, 117)
+Loading configuration...
+Client 8 - X_train shape: (7929, 117) - X_valid shape: (2495, 117)
+Loading configuration...
+Client 8 - X_train shape: (7929, 117) - X_valid shape: (2495, 117)
+Loading configuration...
+Client 3 - X_train shape: (21607, 117) - X_valid shape: (5535, 117)
+Loading configuration...
+Client 9 - X_train shape: (14083, 117) - X_valid shape: (3654, 117)
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Client 1 - X_train shape: (8840, 117) - X_valid shape: (2868, 117)
+Client 6 - X_train shape: (9828, 117) - X_valid shape: (3238, 117)
+Client 7 - X_train shape: (26184, 117) - X_valid shape: (6323, 117)
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Client 6 - X_train shape: (9828, 117) - X_valid shape: (3238, 117)
+Create eval model with last saved params...
+Loading configuration...
+Client 3 - X_train shape: (21607, 117) - X_valid shape: (5535, 117)
+Client 8 - X_train shape: (7929, 117) - X_valid shape: (2495, 117)
+Client 3 - X_train shape: (21607, 117) - X_valid shape: (5535, 117)
+Client 4 - X_train shape: (13158, 117) - X_valid shape: (2730, 117)
+Client 5 - X_train shape: (40213, 117) - X_valid shape: (10402, 117)
+Client 7 - X_train shape: (26184, 117) - X_valid shape: (6323, 117)
+Client 2 - X_train shape: (243086, 117) - X_valid shape: (59317, 117)
+Create eval model with last saved params...
+Loading configuration...
+Client 5 - X_train shape: (40213, 117) - X_valid shape: (10402, 117)
+Client 8 - X_train shape: (7929, 117) - X_valid shape: (2495, 117)
+Client 6 - X_train shape: (9828, 117) - X_valid shape: (3238, 117)
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Client 7 - X_train shape: (26184, 117) - X_valid shape: (6323, 117)
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Client 2 - X_train shape: (243086, 117) - X_valid shape: (59317, 117)
+Create eval model with last saved params...
+Loading configuration...
+Client 8 - X_train shape: (7929, 117) - X_valid shape: (2495, 117)
+Client 7 - X_train shape: (26184, 117) - X_valid shape: (6323, 117)
+Client 8 - X_train shape: (7929, 117) - X_valid shape: (2495, 117)
+Client 6 - X_train shape: (9828, 117) - X_valid shape: (3238, 117)
+Client 5 - X_train shape: (40213, 117) - X_valid shape: (10402, 117)
+Client 3 - X_train shape: (21607, 117) - X_valid shape: (5535, 117)
+Client 4 - X_train shape: (13158, 117) - X_valid shape: (2730, 117)
+Create eval model with last saved params...
+Loading configuration...
+Client 8 - X_train shape: (7929, 117) - X_valid shape: (2495, 117)
+Client 8 - X_train shape: (7929, 117) - X_valid shape: (2495, 117)
+Client 6 - X_train shape: (9828, 117) - X_valid shape: (3238, 117)
+Client 3 - X_train shape: (21607, 117) - X_valid shape: (5535, 117)
+Client 2 - X_train shape: (243086, 117) - X_valid shape: (59317, 117)
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Client 8 - X_train shape: (7929, 117) - X_valid shape: (2495, 117)
+Create eval model with last saved params...
+Loading configuration...
+Client 1 - X_train shape: (8840, 117) - X_valid shape: (2868, 117)
+Client 5 - X_train shape: (40213, 117) - X_valid shape: (10402, 117)
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Client 8 - X_train shape: (7929, 117) - X_valid shape: (2495, 117)
+Client 6 - X_train shape: (9828, 117) - X_valid shape: (3238, 117)
+Client 5 - X_train shape: (40213, 117) - X_valid shape: (10402, 117)
+Client 2 - X_train shape: (243086, 117) - X_valid shape: (59317, 117)
+Create eval model with last saved params...
+Loading configuration...
+Client 3 - X_train shape: (21607, 117) - X_valid shape: (5535, 117)
+Client 4 - X_train shape: (13158, 117) - X_valid shape: (2730, 117)
+Client 6 - X_train shape: (9828, 117) - X_valid shape: (3238, 117)
+Client 8 - X_train shape: (7929, 117) - X_valid shape: (2495, 117)
+Client 7 - X_train shape: (26184, 117) - X_valid shape: (6323, 117)
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Client 1 - X_train shape: (8840, 117) - X_valid shape: (2868, 117)
+Create eval model with last saved params...
+Loading configuration...
+Client 2 - X_train shape: (243086, 117) - X_valid shape: (59317, 117)
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Client 6 - X_train shape: (9828, 117) - X_valid shape: (3238, 117)
+Client 4 - X_train shape: (13158, 117) - X_valid shape: (2730, 117)
+Client 2 - X_train shape: (243086, 117) - X_valid shape: (59317, 117)
+Loading configuration...
+Client 2 - X_train shape: (243086, 117) - X_valid shape: (59317, 117)
+Client 1 - X_train shape: (8840, 117) - X_valid shape: (2868, 117)
+Client 8 - X_train shape: (7929, 117) - X_valid shape: (2495, 117)
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Client 7 - X_train shape: (26184, 117) - X_valid shape: (6323, 117)
+Loading configuration...
+Client 9 - X_train shape: (14083, 117) - X_valid shape: (3654, 117)
+Client 3 - X_train shape: (21607, 117) - X_valid shape: (5535, 117)
+Client 1 - X_train shape: (8840, 117) - X_valid shape: (2868, 117)
+Client 9 - X_train shape: (14083, 117) - X_valid shape: (3654, 117)
+Client 2 - X_train shape: (243086, 117) - X_valid shape: (59317, 117)
+Client 8 - X_train shape: (7929, 117) - X_valid shape: (2495, 117)
+Client 7 - X_train shape: (26184, 117) - X_valid shape: (6323, 117)
+Create eval model with last saved params...
+Loading configuration...
+Client 3 - X_train shape: (21607, 117) - X_valid shape: (5535, 117)
+Client 4 - X_train shape: (13158, 117) - X_valid shape: (2730, 117)
+Client 3 - X_train shape: (21607, 117) - X_valid shape: (5535, 117)
+Client 5 - X_train shape: (40213, 117) - X_valid shape: (10402, 117)
+Client 2 - X_train shape: (243086, 117) - X_valid shape: (59317, 117)
+Client 8 - X_train shape: (7929, 117) - X_valid shape: (2495, 117)
+Client 7 - X_train shape: (26184, 117) - X_valid shape: (6323, 117)
+Create eval model with last saved params...
+Loading configuration...
+Client 9 - X_train shape: (14083, 117) - X_valid shape: (3654, 117)
+Client 3 - X_train shape: (21607, 117) - X_valid shape: (5535, 117)
+Client 6 - X_train shape: (9828, 117) - X_valid shape: (3238, 117)
+Client 4 - X_train shape: (13158, 117) - X_valid shape: (2730, 117)
+Client 7 - X_train shape: (26184, 117) - X_valid shape: (6323, 117)
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Client 6 - X_train shape: (9828, 117) - X_valid shape: (3238, 117)
+Create eval model with last saved params...
+Loading configuration...
+Loading configuration...
+Client 3 - X_train shape: (21607, 117) - X_valid shape: (5535, 117)
+Client 3 - X_train shape: (21607, 117) - X_valid shape: (5535, 117)
+Client 8 - X_train shape: (7929, 117) - X_valid shape: (2495, 117)
+Client 4 - X_train shape: (13158, 117) - X_valid shape: (2730, 117)
+Client 2 - X_train shape: (243086, 117) - X_valid shape: (59317, 117)
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Client 9 - X_train shape: (14083, 117) - X_valid shape: (3654, 117)
+Create eval model with last saved params...
+Client 7 - X_train shape: (26184, 117) - X_valid shape: (6323, 117)
+Client 5 - X_train shape: (40213, 117) - X_valid shape: (10402, 117)
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Client 9 - X_train shape: (14083, 117) - X_valid shape: (3654, 117)
+Client 2 - X_train shape: (243086, 117) - X_valid shape: (59317, 117)
+Client 3 - X_train shape: (21607, 117) - X_valid shape: (5535, 117)
+Client 2 - X_train shape: (243086, 117) - X_valid shape: (59317, 117)
+Create eval model with last saved params...
+Loading configuration...
+Client 4 - X_train shape: (13158, 117) - X_valid shape: (2730, 117)
+Loading configuration...
+Client 5 - X_train shape: (40213, 117) - X_valid shape: (10402, 117)
+Loading configuration...
+Client 6 - X_train shape: (9828, 117) - X_valid shape: (3238, 117)
+Loading configuration...
+Client 7 - X_train shape: (26184, 117) - X_valid shape: (6323, 117)
+Loading configuration...
+Client 7 - X_train shape: (26184, 117) - X_valid shape: (6323, 117)
+Loading configuration...
+Client 5 - X_train shape: (40213, 117) - X_valid shape: (10402, 117)
+Client 3 - X_train shape: (21607, 117) - X_valid shape: (5535, 117)
+Client 8 - X_train shape: (7929, 117) - X_valid shape: (2495, 117)
+Client 9 - X_train shape: (14083, 117) - X_valid shape: (3654, 117)
+Client 6 - X_train shape: (9828, 117) - X_valid shape: (3238, 117)
+Loading configuration...
+Client 5 - X_train shape: (40213, 117) - X_valid shape: (10402, 117)
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Client 1 - X_train shape: (8840, 117) - X_valid shape: (2868, 117)
+Client 3 - X_train shape: (21607, 117) - X_valid shape: (5535, 117)
+Client 7 - X_train shape: (26184, 117) - X_valid shape: (6323, 117)
+Loading configuration...
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Client 3 - X_train shape: (21607, 117) - X_valid shape: (5535, 117)
+Client 6 - X_train shape: (9828, 117) - X_valid shape: (3238, 117)
+Client 5 - X_train shape: (40213, 117) - X_valid shape: (10402, 117)
+Client 2 - X_train shape: (243086, 117) - X_valid shape: (59317, 117)
+Loading configuration...
+Client 7 - X_train shape: (26184, 117) - X_valid shape: (6323, 117)
+Loading configuration...
+Client 4 - X_train shape: (13158, 117) - X_valid shape: (2730, 117)
+Loading configuration...
+Client 5 - X_train shape: (40213, 117) - X_valid shape: (10402, 117)
+Loading configuration...
+Client 2 - X_train shape: (243086, 117) - X_valid shape: (59317, 117)
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Client 1 - X_train shape: (8840, 117) - X_valid shape: (2868, 117)
+Client 4 - X_train shape: (13158, 117) - X_valid shape: (2730, 117)
+Client 7 - X_train shape: (26184, 117) - X_valid shape: (6323, 117)
+Client 1 - X_train shape: (8840, 117) - X_valid shape: (2868, 117)
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Create eval model with last saved params...
+Loading configuration...
+Client 6 - X_train shape: (9828, 117) - X_valid shape: (3238, 117)
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Client 6 - X_train shape: (9828, 117) - X_valid shape: (3238, 117)
+Client 1 - X_train shape: (8840, 117) - X_valid shape: (2868, 117)
+Client 4 - X_train shape: (13158, 117) - X_valid shape: (2730, 117)
+Client 5 - X_train shape: (40213, 117) - X_valid shape: (10402, 117)
+Client 2 - X_train shape: (243086, 117) - X_valid shape: (59317, 117)
+Create eval model with last saved params...
+Loading configuration...
+Client 1 - X_train shape: (8840, 117) - X_valid shape: (2868, 117)
+Client 4 - X_train shape: (13158, 117) - X_valid shape: (2730, 117)
+Client 1 - X_train shape: (8840, 117) - X_valid shape: (2868, 117)
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Client 3 - X_train shape: (21607, 117) - X_valid shape: (5535, 117)
+Client 6 - X_train shape: (9828, 117) - X_valid shape: (3238, 117)
+Client 9 - X_train shape: (14083, 117) - X_valid shape: (3654, 117)
+Create eval model with last saved params...
+Evaluate model on all clients...
+Loading configuration...
+Loading configuration...
+Client 8 - X_train shape: (7929, 117) - X_valid shape: (2495, 117)
+Client 3 - X_train shape: (21607, 117) - X_valid shape: (5535, 117)
+Client 8 - X_train shape: (7929, 117) - X_valid shape: (2495, 117)
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Client 4 - X_train shape: (13158, 117) - X_valid shape: (2730, 117)
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Client 6 - X_train shape: (9828, 117) - X_valid shape: (3238, 117)
+Client 9 - X_train shape: (14083, 117) - X_valid shape: (3654, 117)
+Client 1 - X_train shape: (8840, 117) - X_valid shape: (2868, 117)
+Create eval model with last saved params...
+Evaluate model on all clients...
+Client 7 - X_train shape: (26184, 117) - X_valid shape: (6323, 117)
+Client 5 - X_train shape: (40213, 117) - X_valid shape: (10402, 117)
+Client 2 - X_train shape: (243086, 117) - X_valid shape: (59317, 117)
+Loading configuration...
+Client 7 - X_train shape: (26184, 117) - X_valid shape: (6323, 117)
+Client 10 - X_train shape: (11963, 117) - X_valid shape: (2987, 117)
+Client 4 - X_train shape: (13158, 117) - X_valid shape: (2730, 117)
+Client 8 - X_train shape: (7929, 117) - X_valid shape: (2495, 117)
+Client 7 - X_train shape: (26184, 117) - X_valid shape: (6323, 117)
+Client 5 - X_train shape: (40213, 117) - X_valid shape: (10402, 117)
+Client 2 - X_train shape: (243086, 117) - X_valid shape: (59317, 117)
