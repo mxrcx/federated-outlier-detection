@@ -166,7 +166,7 @@ class GMMClient(fl.client.Client):
             para_b = bytearray(para)
         self.model.set_params(para_b)
 
-        y_pred = self.model.predict(self.X_valid)
+        y_pred = self.model.predict_proba(self.X_valid)
         auprc = average_precision_score(self.y_valid, y_pred)
 
         log(INFO, f"AUPRC: {auprc}")

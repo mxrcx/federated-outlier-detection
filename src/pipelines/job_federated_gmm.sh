@@ -8,4 +8,4 @@
 #SBATCH --time=48:00:00 # 48 hours
 #SBATCH --output=logs/job_%j.log # %j is job id
 
-conda run -n fedout-det python3 federated_gmm_simulation.py
+conda run -n fedout-det python3 federated_gmm_simulation_numpy.py
