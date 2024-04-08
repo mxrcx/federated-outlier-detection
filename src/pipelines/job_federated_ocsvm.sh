@@ -3,8 +3,8 @@
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=marco.schaarschmidt@student.hpi.de
 #SBATCH --partition=cpu # -p
-#SBATCH --cpus-per-task=128 # -c
-#SBATCH --mem=2000gb
+#SBATCH --cpus-per-task=64 # -c
+#SBATCH --mem=512gb
 #SBATCH --time=48:00:00 # 48 hours
 #SBATCH --output=logs/job_%j.log # %j is job id
 

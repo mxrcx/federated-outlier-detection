@@ -139,9 +139,10 @@ def evaluate_model_on_all_clients(
         ]
         eval_model.dual_coef_ = params[0]
         eval_model.offset_ = params[1]
+        eval_model.support_vectors_ = params[2]
 
         logger.info("Evaluate model on all clients...")
-        for hospitalid in hospitalids:
+        for hospitalid in hospitalids[1:3]:
             test = load_parquet(
                 os.path.join(path_to_splits, "individual_hospital_splits"),
                 f"hospital{hospitalid}_rstate{random_state}_test.parquet",

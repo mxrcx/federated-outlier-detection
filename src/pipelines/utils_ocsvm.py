@@ -10,6 +10,7 @@ def get_model_parameters(model: OneClassSVM) -> NDArrays:
     params = [
         safe_sparse_dot(model.dual_coef_, model.support_vectors_),
         model.offset_,
+        model.support_vectors_,
     ]
     return params
 
@@ -18,6 +19,7 @@ def set_model_params(model: OneClassSVM, params: NDArrays) -> OneClassSVM:
     """Sets the parameters of a sklean OneClassSVM model."""
     model.dual_coef_ = params[0]
     model.offset_ = params[1]
+    model.support_vectors_ = params[2]
     return model
 
 

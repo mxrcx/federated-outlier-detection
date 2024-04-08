@@ -34,6 +34,10 @@ def single_random_split_run(
     logging.debug("Splitting data into a train and test subset...")
     train, test = split_data_on_stay_ids(data, test_size, random_state)
 
+    # Shrink down train and test to 30% of their current samples randomly
+    train = train.sample(frac=0.3, random_state=random_state)
+    test = test.sample(frac=0.3, random_state=random_state)
+
     logging.debug("Imputing missing values...")
     train = impute(train)
     test = impute(test)
@@ -50,7 +54,7 @@ def single_random_split_run(
     if model_name == "isolationforest":
         model = IsolationForest(random_state=random_state, n_jobs=-1)
         param_grid = {
-            "n_estimators": [50, 100, 200, 500],
+            "n_estimators": [50, 100, 200],
             "max_samples": [0.25, 0.5, 1.0],
             "contamination": [0.01, 0.05, 0.1],
             "max_features": [0.5, 1.0],
@@ -59,7 +63,7 @@ def single_random_split_run(
     elif model_name == "gaussianmixture":
         model = GaussianMixture(random_state=random_state)
         param_grid = {
-            "n_components": [1, 2, 4, 8, 16, 32],
+            "n_components": [1, 2, 4, 8, 16],
             "covariance_type": ["full", "tied", "diag", "spherical"],
             "init_params": ["kmeans", "random"],
             "max_iter": [50, 100, 200],
@@ -75,7 +79,7 @@ def single_random_split_run(
         model = IsolationForest(random_state=random_state, n_jobs=-1)
         param_grid = {}
 
-    grid_search = GridSearchCV(model, param_grid, cv=5, scoring="average_precision", n_jobs=-1)
+    grid_search = GridSearchCV(model, param_grid, cv=5, scoring="accuracy", n_jobs=-1)
 
     logging.debug(f"Training a {model_name} model...")
     grid_search.fit(X_train, y_train)
@@ -101,7 +105,7 @@ def grid_search_random_split():
     logging.debug("Loading preprocessed data...")
     data = load_parquet(path["processed"], filename["processed"], optimize_memory=True)
 
-    for random_state in range(config_settings["random_split_reps"]):
+    for random_state in range(1): # config_settings["random_split_reps"]):
         logging.info(f"Starting a single run with random_state={random_state}")
         single_random_split_run(
             model_name,

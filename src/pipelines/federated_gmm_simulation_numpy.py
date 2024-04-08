@@ -27,14 +27,6 @@ NUM_ROUNDS = 10
 # Persistent storage
 persistent_storage = {}
 
-# Configure the logger
-file_handler = logging.FileHandler('app.log', delay=False)
-logger = logging.getLogger(__name__)
-logger.addHandler(file_handler)
-logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-
 
 def get_server_evaluate(random_state):
     def server_evaluate(
@@ -117,7 +109,9 @@ def get_client_fn(path_to_splits, hospitalids, random_state, training_columns_to
         )
 
         # Create and return client
-        return GMMClient(client_id, train, test, training_columns_to_drop, random_state).to_client()
+        return GMMClient(
+            client_id, train, test, training_columns_to_drop, random_state
+        ).to_client()
 
     return client_fn
 
@@ -131,19 +125,17 @@ def evaluate_model_on_all_clients(
 ):
     for random_state in range(random_split_reps):
         # Create an evaluation model and set its "weights" to the last saved during fl simulation
-        logger.info("Create eval model with last saved params...")
-        eval_model = GaussianMixture(n_components = 3, random_state = random_state)
+        log(INFO, "Create eval model with last saved params...")
+        eval_model = GaussianMixture(n_components=3, random_state=random_state)
         print(persistent_storage[f"last_model_params_rstate{random_state}"])
-        params = persistent_storage[
-            f"last_model_params_rstate{random_state}"
-        ]
+        params = persistent_storage[f"last_model_params_rstate{random_state}"]
         eval_model.weights_ = params[0]
         eval_model.means_ = params[1]
         eval_model.covariances_ = params[2]
         eval_model.precisions_ = params[3]
         eval_model.precisions_cholesky_ = params[4]
 
-        logger.info("Evaluate model on all clients...")
+        log(INFO, "Evaluate model on all clients...")
         for hospitalid in hospitalids:
             test = load_parquet(
                 os.path.join(path_to_splits, "individual_hospital_splits"),
@@ -164,7 +156,7 @@ def evaluate_model_on_all_clients(
             # Evaluate
             y_pred = eval_model.predict(X_test)
             y_pred_proba = eval_model.predict_proba(X_test)
-            
+
             metrics.add_hospitalid(hospitalid)
             metrics.add_random_state(random_state)
             metrics.add_accuracy_value(y_test, y_pred)
@@ -176,11 +168,11 @@ def evaluate_model_on_all_clients(
 
 
 def run_federated_gmm_simulation():
-    logger.info("Loading configuration...")
+    log(INFO, "Loading configuration...")
     path, filename, config_settings = load_configuration()
 
     if not os.path.exists(os.path.join(path["splits"], "individual_hospital_splits")):
-        logger.info("Make hospital splits...")
+        log(INFO, "Make hospital splits...")
         make_hospital_splits()
 
     # Load hospitalids
@@ -214,7 +206,7 @@ def run_federated_gmm_simulation():
         metrics,
     )
 
-    logger.info("Calculating metric averages and saving results...")
+    log(INFO, "Calculating metric averages and saving results...")
     metrics_df = metrics.get_metrics_dataframe(
         additional_metrics=["Hospitalid", "Random State"]
     )

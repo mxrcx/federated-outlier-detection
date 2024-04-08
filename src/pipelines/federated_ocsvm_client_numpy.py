@@ -12,7 +12,7 @@ from sklearn.svm import OneClassSVM
 from sklearn.metrics import average_precision_score
 
 from data.processing import impute, scale
-import utils
+import utils_ocsvm as utils
 
 # Configure the logger
 file_handler = logging.FileHandler("app.log", delay=False)
