@@ -34,7 +34,7 @@ def set_initial_params(model: GaussianMixture) -> GaussianMixture:
     sklearn.linear_model.GaussianMixture documentation for more information.
     """
     n_features = 117  # Number of features in dataset
-    n_components = 1  # Number of components in GMM
+    n_components = 3  # Number of components in GMM
 
     model.weights_ = np.zeros((n_components,))
     model.means_ = np.zeros((n_components, n_features))
