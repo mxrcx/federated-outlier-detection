@@ -210,14 +210,14 @@ def run_federated_gmm_simulation():
     metrics_df = metrics.get_metrics_dataframe(
         additional_metrics=["Hospitalid", "Random State"]
     )
-    save_csv(metrics_df, path["results"], "federated_gmm_metrics.csv")
+    save_csv(metrics_df, path["results"], "federated_gaussianmixture_metrics.csv")
 
     metrics.calculate_averages_per_hospitalid_across_random_states()
     metrics.calculate_total_averages_across_hospitalids()
     metrics_avg_df = metrics.get_metrics_dataframe(
         additional_metrics=["Hospitalid"], avg_metrics=True
     )
-    save_csv(metrics_avg_df, path["results"], "federated_gmm_metrics_avg.csv")
+    save_csv(metrics_avg_df, path["results"], "federated_gaussianmixture_metrics_avg.csv")
 
 
 if __name__ == "__main__":
