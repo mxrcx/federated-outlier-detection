@@ -18,7 +18,7 @@ from data.saving import save_csv
 from data.make_hospital_splits import make_hospital_splits
 from data.processing import impute, scale_X_test
 from metrics.metrics import Metrics
-from sklearn.svm import OneClassSVM
+from sklearn.linear_model import SGDOneClassSVM
 
 # FL experimental settings
 NUM_CLIENTS = 10  # 131
@@ -132,14 +132,13 @@ def evaluate_model_on_all_clients(
     for random_state in range(1):  # random_split_reps):
         # Create an evaluation model and set its "weights" to the last saved during fl simulation
         logger.info("Create eval model with last saved params...")
-        eval_model = OneClassSVM(kernel="linear", nu=0.01)
+        eval_model = SGDOneClassSVM(nu=0.01)
         print(persistent_storage[f"last_model_params_rstate{random_state}"])
         params = persistent_storage[
             f"last_model_params_rstate{random_state}"
         ]
-        eval_model.dual_coef_ = params[0]
+        eval_model.coef_ = params[0]
         eval_model.offset_ = params[1]
-        eval_model.support_vectors_ = params[2]
 
         logger.info("Evaluate model on all clients...")
         for hospitalid in hospitalids[1:3]:

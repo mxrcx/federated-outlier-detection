@@ -8,7 +8,7 @@ import pandas as pd
 
 import flwr as fl
 from flwr.common.logger import log
-from sklearn.svm import OneClassSVM
+from sklearn.linear_model import SGDOneClassSVM
 from sklearn.metrics import average_precision_score
 
 from data.processing import impute, scale
@@ -69,8 +69,8 @@ class OCSVMClient(fl.client.NumPyClient):
         self.model = utils.set_initial_params(self.model)
 
     def __build_model__(self):
-        self.model = OneClassSVM()
-        self.model.kernel = self.params["kernel"]
+        self.model = SGDOneClassSVM()
+        # self.model.kernel = self.params["kernel"]
         self.model.nu = self.params["nu"]
 
     def get_parameters(self, config):  # type: ignore
