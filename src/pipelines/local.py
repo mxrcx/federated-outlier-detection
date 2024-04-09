@@ -51,10 +51,16 @@ def single_local_run(train, test, model_name, random_state, columns_to_drop):
     # Predict the test set
     logging.debug("Predicting the test set...")
     y_pred = model.predict(X_test)
+        
     try:
         y_score = model.predict_proba(X_test)
     except AttributeError:
         y_score = model.decision_function(X_test)
+        
+    # Invert the predictions and scores if the model is an anomaly detection model
+    if model_name in ["isolationforest", "oneclasssvm"]:
+        y_pred = y_pred * -1
+        y_score = y_score * -1
 
     return (y_pred, y_score, y_test, test["stay_id"])
 

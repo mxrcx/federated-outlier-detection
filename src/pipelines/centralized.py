@@ -62,11 +62,18 @@ def single_cv_run(
 
         # Fit model
         model.fit(X_train, y_train)
+        
+        # Predict the test set
         y_pred = model.predict(X_test)
         try:
             y_score = model.predict_proba(X_test)
         except AttributeError:
             y_score = model.decision_function(X_test)
+            
+        # Invert the predictions and scores if the model is an anomaly detection model
+        if model_name in ["isolationforest", "oneclasssvm"]:
+            y_pred = y_pred * -1
+            y_score = y_score * -1
 
         # Add metrics to the metrics object for each hospital
         for hospitalid in test["hospitalid"].unique():

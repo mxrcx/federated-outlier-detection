@@ -158,10 +158,11 @@ def evaluate_model_on_all_clients(
 
             # Evaluate
             y_pred = eval_model.predict(X_test)
-            # y_pred_proba = eval_model.predict_proba(X_test)
-            y_pred_proba = eval_model.decision_function(
-                X_test
-            )  # find alternative to predict_proba!!
+            y_pred_proba = eval_model.decision_function(X_test)
+
+            # Invert the predictions and scores if the model is an anomaly detection model
+            y_pred = y_pred * -1
+            y_pred_proba = y_pred_proba * -1
 
             metrics.add_hospitalid(hospitalid)
             metrics.add_random_state(random_state)
@@ -186,7 +187,7 @@ def run_federated_ocsvm_simulation():
 
     # Launch the simulation with differnt random_state
     metrics = Metrics()
-    for random_state in range(1):  # config_settings["random_split_reps"]):
+    for random_state in range(config_settings["random_split_reps"]):
         hist = fl.simulation.start_simulation(
             client_fn=get_client_fn(
                 path["splits"],

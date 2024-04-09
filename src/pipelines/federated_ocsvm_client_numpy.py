@@ -86,6 +86,7 @@ class OCSVMClient(fl.client.NumPyClient):
         if not hasattr(self.model, "_sparse"):
             self.model.fit(self.X_train)
         y_pred = self.model.decision_function(self.X_valid)
+        y_pred = y_pred * -1
         auprc = average_precision_score(self.y_valid, y_pred)
 
         log(INFO, f"AUPRC: {auprc}")
