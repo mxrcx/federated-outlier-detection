@@ -1,6 +1,6 @@
 import os
-import logging
 import sys
+import logging
 from types import SimpleNamespace
 
 sys.path.append("..")
@@ -26,14 +26,6 @@ NUM_ROUNDS = 10
 
 # Persistent storage
 persistent_storage = {}
-
-# Configure the logger
-file_handler = logging.FileHandler("app.log", delay=False)
-logger = logging.getLogger(__name__)
-logger.addHandler(file_handler)
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
 
 
 def get_server_evaluate(random_state):
@@ -131,14 +123,14 @@ def evaluate_model_on_all_clients(
 ):
     for random_state in range(random_split_reps):
         # Create an evaluation model and set its "weights" to the last saved during fl simulation
-        logger.info("Create eval model with last saved params...")
+        log(INFO, "Create eval model with last saved params...")
         eval_model = SGDOneClassSVM(nu=0.01)
         print(persistent_storage[f"last_model_params_rstate{random_state}"])
         params = persistent_storage[f"last_model_params_rstate{random_state}"]
         eval_model.coef_ = params[0]
         eval_model.offset_ = params[1]
 
-        logger.info("Evaluate model on all clients...")
+        log(INFO, "Evaluate model on all clients...")
         for hospitalid in hospitalids:
             test = load_parquet(
                 os.path.join(path_to_splits, "individual_hospital_splits"),
@@ -175,11 +167,11 @@ def evaluate_model_on_all_clients(
 
 
 def run_federated_ocsvm_simulation():
-    logger.info("Loading configuration...")
-    path, filename, config_settings = load_configuration()
+    log(INFO, "Loading configuration...")
+    path, _filename, config_settings = load_configuration()
 
     if not os.path.exists(os.path.join(path["splits"], "individual_hospital_splits")):
-        logger.info("Make hospital splits...")
+        log(INFO, "Make hospital splits...")
         make_hospital_splits()
 
     # Load hospitalids
@@ -213,7 +205,7 @@ def run_federated_ocsvm_simulation():
         metrics,
     )
 
-    logger.info("Calculating metric averages and saving results...")
+    log(INFO, "Calculating metric averages and saving results...")
     metrics_df = metrics.get_metrics_dataframe(
         additional_metrics=["Hospitalid", "Random State"]
     )

@@ -3,7 +3,6 @@ import sys
 sys.path.append("..")
 
 from logging import INFO
-import logging
 import pandas as pd
 
 import flwr as fl
@@ -13,14 +12,6 @@ from sklearn.metrics import average_precision_score
 
 from data.processing import impute, scale
 import utils_ocsvm as utils
-
-# Configure the logger
-file_handler = logging.FileHandler("app.log", delay=False)
-logger = logging.getLogger(__name__)
-logger.addHandler(file_handler)
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
 
 
 class OCSVMClient(fl.client.NumPyClient):
@@ -54,9 +45,6 @@ class OCSVMClient(fl.client.NumPyClient):
         log(
             INFO,
             f"Client {cid} - X_train shape: {self.X_train.shape} - X_valid shape: {self.X_valid.shape}",
-        )
-        logger.info(
-            f"Client {cid} - X_train shape: {self.X_train.shape} - X_valid shape: {self.X_valid.shape}"
         )
 
         # Hyperparamters for training
