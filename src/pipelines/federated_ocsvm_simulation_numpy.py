@@ -21,18 +21,18 @@ from metrics.metrics import Metrics
 from sklearn.linear_model import SGDOneClassSVM
 
 # FL experimental settings
-NUM_CLIENTS = 10  # 131
-NUM_ROUNDS = 1
+NUM_CLIENTS = 131  # 131
+NUM_ROUNDS = 10
 
 # Persistent storage
 persistent_storage = {}
 
 # Configure the logger
-file_handler = logging.FileHandler('app.log', delay=False)
+file_handler = logging.FileHandler("app.log", delay=False)
 logger = logging.getLogger(__name__)
 logger.addHandler(file_handler)
 logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
 
@@ -77,12 +77,12 @@ def evaluate_metrics_aggregation(eval_metrics):
 def get_strategy(random_state):
     strategy = FedAvg(
         fraction_fit=0.45,  # Sample 45% of available clients for training
-        fraction_evaluate=0.175,  # Sample 22.5% of available clients for evaluation
-        min_fit_clients=3,  # Never sample less than 10 clients for training
-        min_evaluate_clients=2,  # Never sample less than 5 clients for evaluation
+        fraction_evaluate=0.225,  # Sample 22.5% of available clients for evaluation
+        min_fit_clients=40,  # Never sample less than 10 clients for training
+        min_evaluate_clients=25,  # Never sample less than 5 clients for evaluation
         min_available_clients=max(
-            3, int(NUM_CLIENTS * 0.45)
-        ),  # Wait until at least 35% of clients are available
+            50, int(NUM_CLIENTS * 0.45)
+        ),  # Wait until at least 45% of clients are available
         evaluate_fn=get_server_evaluate(random_state),
         evaluate_metrics_aggregation_fn=evaluate_metrics_aggregation,
     )
@@ -129,19 +129,17 @@ def evaluate_model_on_all_clients(
     training_columns_to_drop,
     metrics,
 ):
-    for random_state in range(1):  # random_split_reps):
+    for random_state in range(random_split_reps):
         # Create an evaluation model and set its "weights" to the last saved during fl simulation
         logger.info("Create eval model with last saved params...")
         eval_model = SGDOneClassSVM(nu=0.01)
         print(persistent_storage[f"last_model_params_rstate{random_state}"])
-        params = persistent_storage[
-            f"last_model_params_rstate{random_state}"
-        ]
+        params = persistent_storage[f"last_model_params_rstate{random_state}"]
         eval_model.coef_ = params[0]
         eval_model.offset_ = params[1]
 
         logger.info("Evaluate model on all clients...")
-        for hospitalid in hospitalids[1:3]:
+        for hospitalid in hospitalids:
             test = load_parquet(
                 os.path.join(path_to_splits, "individual_hospital_splits"),
                 f"hospital{hospitalid}_rstate{random_state}_test.parquet",
