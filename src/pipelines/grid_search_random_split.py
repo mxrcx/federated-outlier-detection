@@ -5,14 +5,15 @@ import logging
 sys.path.append("..")
 
 from sklearn.ensemble import IsolationForest
-from sklearn.svm import OneClassSVM
+from sklearn.linear_model import SGDOneClassSVM
 from sklearn.mixture import GaussianMixture
 from sklearn.model_selection import GridSearchCV
 
 from data.loading import load_configuration, load_parquet
-from data.processing import impute, scale
+from data.processing import impute, scale, scale_X_test
 from data.preprocessing import preprocessing
 from training.preparation import split_data_on_stay_ids, reformatting_model_name
+import pandas as pd
 
 
 def single_random_split_run(
@@ -31,25 +32,29 @@ def single_random_split_run(
         random_state (int): The random state to be used.
         columns_to_drop (list): The configuration settings.
     """
-    logging.debug("Splitting data into a train and test subset...")
-    train, test = split_data_on_stay_ids(data, test_size, random_state)
+    # logging.debug("Splitting data into a train and test subset...")
+    # train, test = split_data_on_stay_ids(data, test_size, random_state)
 
     # Shrink down train and test to 30% of their current samples randomly
-    train = train.sample(frac=0.3, random_state=random_state)
-    test = test.sample(frac=0.3, random_state=random_state)
+    train = data.sample(frac=0.3, random_state=random_state)
+    # test = test.sample(frac=0.3, random_state=random_state)
 
     logging.debug("Imputing missing values...")
-    train = impute(train)
-    test = impute(test)
+    train = impute(data)
+    # test = impute(test)
 
     # Define the features and target
     X_train = train.drop(columns=columns_to_drop)
     y_train = train["label"]
-    X_test = test.drop(columns=columns_to_drop)
-    y_test = test["label"]
+    # X_test = test.drop(columns=columns_to_drop)
+    # y_test = test["label"]
 
     # Perform scaling
-    X_train, X_test = scale(X_train, X_test)
+    # X_train, X_test = scale(X_train, X_test)
+    X_train = scale_X_test(X_train)
+
+    # Invert the label for outcome
+    y_train = 1 - y_train
 
     if model_name == "isolationforest":
         model = IsolationForest(random_state=random_state, n_jobs=-1)
@@ -57,8 +62,8 @@ def single_random_split_run(
             "n_estimators": [50, 100, 200],
             "max_samples": [0.25, 0.5, 1.0],
             "contamination": [0.01, 0.05, 0.1],
-            "max_features": [0.5, 1.0],
-            "bootstrap": [True, False],
+            "max_features": [0.5, 0.75, 1.0],
+            "bootstrap": [True],
         }
     elif model_name == "gaussianmixture":
         model = GaussianMixture(random_state=random_state)
@@ -69,11 +74,12 @@ def single_random_split_run(
             "max_iter": [50, 100, 200],
         }
     elif model_name == "oneclasssvm":
-        model = OneClassSVM()
+        model = SGDOneClassSVM()
         param_grid = {
-            "kernel": ["linear", "rbf", "poly", "sigmoid"],
-            "gamma": [0.001, 0.01, 0.1, 1, 10],
-            "nu": [0.01, 0.05, 0.1, 0.2],
+            "nu": [0.01, 0.05, 0.1],
+            "learning_rate": ["optimal", "adaptive", "constant", "invscaling"],
+            "eta0": [0.01, 0.05, 0.1],
+            "max_iter": [500, 1000, 1500],
         }
     else:
         model = IsolationForest(random_state=random_state, n_jobs=-1)
@@ -102,11 +108,23 @@ def grid_search_random_split():
         logging.info("Preprocess data...")
         preprocessing()
 
-    logging.debug("Loading preprocessed data...")
-    data = load_parquet(path["processed"], filename["processed"], optimize_memory=True)
+    # logging.debug("Loading preprocessed data...")
+    # data = load_parquet(path["processed"], filename["processed"], optimize_memory=True)
 
-    for random_state in range(1): # config_settings["random_split_reps"]):
+    for random_state in range(config_settings["random_split_reps"]):
         logging.info(f"Starting a single run with random_state={random_state}")
+        data = load_parquet(
+            os.path.join(path["splits"], "group_hospital_splits"),
+            f"fold0_rstate{random_state}_train.parquet",
+            optimize_memory=True,
+        )
+        # data_1 = load_parquet(
+        #    os.path.join(path["splits"], "group_hospital_splits"),
+        #    f"fold1_rstate{random_state}_train.parquet",
+        #    optimize_memory=True,
+        # )
+        # data = pd.concat([data_0, data_1], ignore_index=True)
+
         single_random_split_run(
             model_name,
             data,
