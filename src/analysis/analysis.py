@@ -1,25 +1,31 @@
 import pandas as pd
 import numpy as np
 import re
-from data.loading import load_csv
+from data.loading import load_csv, load_configuration
 from data.saving import save_csv
+from training.preparation import reformatting_model_name
 
 
-def load_csv_files():
+def load_csv_files(model_name):
     """Load CSV files with avg metrics
 
+    Args:
+        model_name (str): Model name
+
     Returns:
-        pd.DataFrame: Leave-one-group-out avg dataframe
-        pd.DataFrame: Local learning avg dataframe
-        pd.DataFrame: Federated XGBoost avg dataframe
+        pd.DataFrame: Centralized learning metrics avg dataframe
+        pd.DataFrame: Local learning metrics avg dataframe
+        pd.DataFrame: Federated learning metrics avg dataframe
     """
-    results_logo_avg = load_csv("../../results", "leave_one_group_out_metrics_avg.csv")
-    results_local_avg = load_csv("../../results", "local_learning_metrics_avg.csv")
+    results_centralized_avg = load_csv(
+        "../../results", f"centralized_{model_name}_metrics_avg.csv"
+    )
+    results_local_avg = load_csv("../../results", f"local_{model_name}_metrics_avg.csv")
     results_federated_avg = load_csv(
-        "../../results", "federated_xgboost_metrics_avg.csv"
+        "../../results", f"federated_{model_name}_metrics_avg.csv"
     )
 
-    return results_logo_avg, results_local_avg, results_federated_avg
+    return results_centralized_avg, results_local_avg, results_federated_avg
 
 
 def combine_results(results_logo_avg, results_local_avg, results_federated_avg):
@@ -197,13 +203,17 @@ def convert_cm_columns(df):
 
 
 def analysis():
-    """Perform CML analysis"""
+    _path, _filename, config_settings = load_configuration()
+    model_name = reformatting_model_name(config_settings["model"])
+
     # Step 1 - Load data
-    results_logo_avg, results_local_avg, results_federated_avg = load_csv_files()
+    results_centralized_avg, results_local_avg, results_federated_avg = load_csv_files(
+        model_name
+    )
 
     # Step 2 - Combine data
     combined_df = combine_results(
-        results_logo_avg, results_local_avg, results_federated_avg
+        results_centralized_avg, results_local_avg, results_federated_avg
     )
 
     # Step 3 - Processing
@@ -220,11 +230,11 @@ def analysis():
 
     # Step 4 - Get individual differences
     combined_df = calculate_differences(combined_df)
-    save_csv(combined_df, "../../results", "analysis_diff.csv")
+    save_csv(combined_df, "../../results", f"analysis_{model_name}_diff.csv")
 
     # Step 5 - Get average differences
     average_diff = create_average_diff(combined_df)
-    save_csv(average_diff, "../../results", "analysis_diff_avg.csv")
+    save_csv(average_diff, "../../results", f"analysis_{model_name}_diff_avg.csv")
 
 
 if __name__ == "__main__":

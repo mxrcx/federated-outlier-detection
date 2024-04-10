@@ -46,6 +46,7 @@ def load_configuration():
     config_settings = {
         key: config["config_settings"][key]
         for key in [
+            "model",
             "random_split_reps",
             "cv_folds",
             "test_size",
