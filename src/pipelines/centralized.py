@@ -1,7 +1,6 @@
 import os
 import logging
 import sys
-from sklearn.ensemble import RandomForestClassifier
 
 sys.path.append("..")
 from data.loading import load_parquet, load_configuration
@@ -9,9 +8,11 @@ from data.saving import save_csv
 from data.processing import impute, scale
 from data.make_hospital_splits import make_hospital_splits
 from metrics.metrics import Metrics
+from training.preparation import get_model, reformatting_model_name
 
 
 def single_cv_run(
+    model_name,
     path_to_splits,
     random_state,
     cv_folds,
@@ -29,11 +30,8 @@ def single_cv_run(
         metrics (Metrics): The metrics object.
     """
     # Create the model
-    model = RandomForestClassifier(
-        n_estimators=100,
-        max_depth=7,
-        random_state=random_state,
-        n_jobs=min(16, int(os.environ["SLURM_CPUS_PER_TASK"])),
+    model = get_model(
+        model_name, random_state, n_jobs=min(16, int(os.environ["SLURM_CPUS_PER_TASK"]))
     )
 
     # Perform stratified group k-fold cross-validation
@@ -64,32 +62,43 @@ def single_cv_run(
 
         # Fit model
         model.fit(X_train, y_train)
+        
+        # Predict the test set
         y_pred = model.predict(X_test)
-        y_pred_proba = model.predict_proba(X_test)
+        try:
+            y_score = model.predict_proba(X_test)
+        except AttributeError:
+            y_score = model.decision_function(X_test)
+            
+        # Invert the predictions and scores if the model is an anomaly detection model
+        if model_name in ["isolationforest", "oneclasssvm"]:
+            y_pred = y_pred * -1
+            y_score = y_score * -1
 
         # Add metrics to the metrics object for each hospital
         for hospitalid in test["hospitalid"].unique():
             mask = test["hospitalid"] == hospitalid
             y_test_hospital = y_test[mask]
             y_pred_hospital = y_pred[mask]
-            y_pred_proba_hospital = y_pred_proba[mask]
+            y_score_hospital = y_score[mask]
 
             metrics.add_hospitalid(hospitalid)
             metrics.add_random_state(random_state)
             metrics.add_accuracy_value(y_test_hospital, y_pred_hospital)
-            metrics.add_auroc_value(y_test_hospital, y_pred_proba_hospital)
-            metrics.add_auprc_value(y_test_hospital, y_pred_proba_hospital)
-            metrics.add_confusion_matrix(y_test_hospital, y_pred_hospital)
+            metrics.add_auroc_value(y_test_hospital, y_score_hospital)
+            metrics.add_auprc_value(y_test_hospital, y_score_hospital)
+            # metrics.add_confusion_matrix(y_test_hospital, y_pred_hospital)
             metrics.add_individual_confusion_matrix_values(
                 y_test_hospital, y_pred_hospital, test["stay_id"][mask]
             )
-            metrics.add_tn_fp_sum()
-            metrics.add_fpr()
+            # metrics.add_tn_fp_sum()
+            # metrics.add_fpr()
 
 
 def leave_one_group_out_pipeline():
     logging.info("Loading configuration...")
-    path, filename, config_settings = load_configuration()
+    path, _filename, config_settings = load_configuration()
+    model_name = reformatting_model_name(config_settings["model"])
 
     if not os.path.exists(os.path.join(path["splits"], "group_hospital_splits")):
         logging.info("Make hospital splits...")
@@ -99,6 +108,7 @@ def leave_one_group_out_pipeline():
 
     for random_state in range(config_settings["random_split_reps"]):
         single_cv_run(
+            model_name,
             path["splits"],
             random_state,
             config_settings["cv_folds"],
@@ -110,14 +120,16 @@ def leave_one_group_out_pipeline():
     metrics_df = metrics.get_metrics_dataframe(
         additional_metrics=["Hospitalid", "Random State"]
     )
-    save_csv(metrics_df, path["results"], "centralized_metrics.csv")
+    save_csv(metrics_df, path["results"], f"centralized_{model_name}_metrics.csv")
 
     metrics.calculate_averages_per_hospitalid_across_random_states()
     metrics.calculate_total_averages_across_hospitalids()
     metrics_avg_df = metrics.get_metrics_dataframe(
         additional_metrics=["Hospitalid"], avg_metrics=True
     )
-    save_csv(metrics_avg_df, path["results"], "centralized_metrics_avg.csv")
+    save_csv(
+        metrics_avg_df, path["results"], f"centralized_{model_name}_metrics_avg.csv"
+    )
 
 
 if __name__ == "__main__":

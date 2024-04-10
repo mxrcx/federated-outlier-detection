@@ -14,10 +14,11 @@ from data.saving import save_csv
 from data.processing import impute, scale
 from data.make_hospital_splits import make_hospital_splits
 from metrics.metrics import Metrics
+from training.preparation import get_model, reformatting_model_name
 
 
 @ray.remote(num_cpus=2)
-def single_local_run(train, test, random_state, columns_to_drop):
+def single_local_run(train, test, model_name, random_state, columns_to_drop):
     """
     Perform a single run of the local pipeline.
 
@@ -42,9 +43,7 @@ def single_local_run(train, test, random_state, columns_to_drop):
 
     # Create & fit the model
     # the n_jobs parameter should be at most what the num_cpus value is in the ray.remote annotation
-    model = RandomForestClassifier(
-        n_estimators=100, max_depth=7, random_state=random_state, n_jobs=2
-    )
+    model = get_model(model_name, random_state, n_jobs=2)
 
     logging.debug("Training a model...")
     model.fit(X_train, y_train)
@@ -52,14 +51,24 @@ def single_local_run(train, test, random_state, columns_to_drop):
     # Predict the test set
     logging.debug("Predicting the test set...")
     y_pred = model.predict(X_test)
-    y_pred_proba = model.predict_proba(X_test)
+        
+    try:
+        y_score = model.predict_proba(X_test)
+    except AttributeError:
+        y_score = model.decision_function(X_test)
+        
+    # Invert the predictions and scores if the model is an anomaly detection model
+    if model_name in ["isolationforest", "oneclasssvm"]:
+        y_pred = y_pred * -1
+        y_score = y_score * -1
 
-    return (y_pred, y_pred_proba, y_test, test["stay_id"])
+    return (y_pred, y_score, y_test, test["stay_id"])
 
 
 def local_learning_pipeline():
     logging.info("Loading configuration...")
-    path, filename, config_settings = load_configuration()
+    path, _filename, config_settings = load_configuration()
+    model_name = reformatting_model_name(config_settings["model"])
 
     if not os.path.exists(os.path.join(path["splits"], "individual_hospital_splits")):
         logging.info("Make hospital splits...")
@@ -88,6 +97,7 @@ def local_learning_pipeline():
                 single_local_run.remote(
                     train,
                     test,
+                    model_name,
                     random_state,
                     config_settings["training_columns_to_drop"],
                 )
@@ -100,32 +110,32 @@ def local_learning_pipeline():
     for hospital_idx, hospitalid in enumerate(hospitalids):
         # Extract the results per hospital and random state
         for random_state in range(config_settings["random_split_reps"]):
-            (y_pred, y_pred_proba, y_test, stay_ids) = results[
+            (y_pred, y_score, y_test, stay_ids) = results[
                 hospital_idx * config_settings["random_split_reps"] + random_state
             ]
 
             metrics.add_hospitalid(hospitalid)
             metrics.add_random_state(random_state)
             metrics.add_accuracy_value(y_test, y_pred)
-            metrics.add_auroc_value(y_test, y_pred_proba)
-            metrics.add_auprc_value(y_test, y_pred_proba)
-            metrics.add_confusion_matrix(y_test, y_pred)
+            metrics.add_auroc_value(y_test, y_score)
+            metrics.add_auprc_value(y_test, y_score)
+            # metrics.add_confusion_matrix(y_test, y_pred)
             metrics.add_individual_confusion_matrix_values(y_test, y_pred, stay_ids)
-            metrics.add_tn_fp_sum()
-            metrics.add_fpr()
+            # metrics.add_tn_fp_sum()
+            # metrics.add_fpr()
 
     logging.info("Calculating averages and saving results...")
     metrics_df = metrics.get_metrics_dataframe(
         additional_metrics=["Hospitalid", "Random State"]
     )
-    save_csv(metrics_df, path["results"], "local_metrics.csv")
+    save_csv(metrics_df, path["results"], f"local_{model_name}_metrics.csv")
 
     metrics.calculate_averages_per_hospitalid_across_random_states()
     metrics.calculate_total_averages_across_hospitalids()
     metrics_avg_df = metrics.get_metrics_dataframe(
         additional_metrics=["Hospitalid"], avg_metrics=True
     )
-    save_csv(metrics_avg_df, path["results"], "local_metrics_avg.csv")
+    save_csv(metrics_avg_df, path["results"], f"local_{model_name}_metrics_avg.csv")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 import os
-import logging
 import sys
+import logging
 from types import SimpleNamespace
 
 sys.path.append("..")
@@ -11,17 +11,17 @@ import numpy as np
 import flwr as fl
 from flwr.common.logger import log
 from flwr.server.strategy import FedAvg
-from federated_ocsvm_client import OCSVMClient
+from federated_ocsvm_client_numpy import OCSVMClient
 
 from data.loading import load_parquet, load_configuration
 from data.saving import save_csv
 from data.make_hospital_splits import make_hospital_splits
 from data.processing import impute, scale_X_test
 from metrics.metrics import Metrics
-from sklearn.svm import OneClassSVM
+from sklearn.linear_model import SGDOneClassSVM
 
 # FL experimental settings
-NUM_CLIENTS = 20  # 131
+NUM_CLIENTS = 131  # 131
 NUM_ROUNDS = 10
 
 # Persistent storage
@@ -69,12 +69,12 @@ def evaluate_metrics_aggregation(eval_metrics):
 def get_strategy(random_state):
     strategy = FedAvg(
         fraction_fit=0.45,  # Sample 45% of available clients for training
-        fraction_evaluate=0.175,  # Sample 22.5% of available clients for evaluation
-        min_fit_clients=10,  # Never sample less than 10 clients for training
-        min_evaluate_clients=5,  # Never sample less than 5 clients for evaluation
+        fraction_evaluate=0.225,  # Sample 22.5% of available clients for evaluation
+        min_fit_clients=40,  # Never sample less than 10 clients for training
+        min_evaluate_clients=25,  # Never sample less than 5 clients for evaluation
         min_available_clients=max(
-            10, int(NUM_CLIENTS * 0.45)
-        ),  # Wait until at least 35% of clients are available
+            50, int(NUM_CLIENTS * 0.45)
+        ),  # Wait until at least 45% of clients are available
         evaluate_fn=get_server_evaluate(random_state),
         evaluate_metrics_aggregation_fn=evaluate_metrics_aggregation,
     )
@@ -121,19 +121,16 @@ def evaluate_model_on_all_clients(
     training_columns_to_drop,
     metrics,
 ):
-    for random_state in range(1):  # random_split_reps):
+    for random_state in range(random_split_reps):
         # Create an evaluation model and set its "weights" to the last saved during fl simulation
-        logging.info("Create eval model with last saved params...")
-        eval_model = OneClassSVM(kernel="linear", nu=0.01)
-        global_model = None
+        log(INFO, "Create eval model with last saved params...")
+        eval_model = SGDOneClassSVM(nu=0.01)
         print(persistent_storage[f"last_model_params_rstate{random_state}"])
-        for item in persistent_storage[
-            f"last_model_params_rstate{random_state}"
-        ].tensors:
-            global_model = bytearray(item)
-        eval_model.set_params(global_model)
+        params = persistent_storage[f"last_model_params_rstate{random_state}"]
+        eval_model.coef_ = params[0]
+        eval_model.offset_ = params[1]
 
-        logging.info("Evaluate model on all clients...")
+        log(INFO, "Evaluate model on all clients...")
         for hospitalid in hospitalids:
             test = load_parquet(
                 os.path.join(path_to_splits, "individual_hospital_splits"),
@@ -153,30 +150,28 @@ def evaluate_model_on_all_clients(
 
             # Evaluate
             y_pred = eval_model.predict(X_test)
-            # y_pred_proba = eval_model.predict_proba(X_test)
-            y_pred_proba = eval_model.decision_function(
-                X_test
-            )  # find alternative to predict_proba!!
+            y_pred_proba = eval_model.decision_function(X_test)
+
+            # Invert the predictions and scores if the model is an anomaly detection model
+            y_pred = y_pred * -1
+            y_pred_proba = y_pred_proba * -1
 
             metrics.add_hospitalid(hospitalid)
             metrics.add_random_state(random_state)
             metrics.add_accuracy_value(y_test, y_pred)
             metrics.add_auroc_value(y_test, y_pred_proba)
             metrics.add_auprc_value(y_test, y_pred_proba)
-            metrics.add_confusion_matrix(y_test, y_pred)
             metrics.add_individual_confusion_matrix_values(
                 y_test, y_pred, test["stay_id"]
             )
-            metrics.add_tn_fp_sum()
-            metrics.add_fpr()
 
 
 def run_federated_ocsvm_simulation():
-    logging.info("Loading configuration...")
-    path, filename, config_settings = load_configuration()
+    log(INFO, "Loading configuration...")
+    path, _filename, config_settings = load_configuration()
 
     if not os.path.exists(os.path.join(path["splits"], "individual_hospital_splits")):
-        logging.info("Make hospital splits...")
+        log(INFO, "Make hospital splits...")
         make_hospital_splits()
 
     # Load hospitalids
@@ -184,7 +179,7 @@ def run_federated_ocsvm_simulation():
 
     # Launch the simulation with differnt random_state
     metrics = Metrics()
-    for random_state in range(1):  # config_settings["random_split_reps"]):
+    for random_state in range(config_settings["random_split_reps"]):
         hist = fl.simulation.start_simulation(
             client_fn=get_client_fn(
                 path["splits"],
@@ -210,18 +205,18 @@ def run_federated_ocsvm_simulation():
         metrics,
     )
 
-    logging.info("Calculating metric averages and saving results...")
+    log(INFO, "Calculating metric averages and saving results...")
     metrics_df = metrics.get_metrics_dataframe(
         additional_metrics=["Hospitalid", "Random State"]
     )
-    save_csv(metrics_df, path["results"], "federated_ocsvm_metrics.csv")
+    save_csv(metrics_df, path["results"], "federated_oneclasssvm_metrics.csv")
 
     metrics.calculate_averages_per_hospitalid_across_random_states()
     metrics.calculate_total_averages_across_hospitalids()
     metrics_avg_df = metrics.get_metrics_dataframe(
         additional_metrics=["Hospitalid"], avg_metrics=True
     )
-    save_csv(metrics_avg_df, path["results"], "federated_ocsvm_metrics_avg.csv")
+    save_csv(metrics_avg_df, path["results"], "federated_oneclasssvm_metrics_avg.csv")
 
 
 if __name__ == "__main__":

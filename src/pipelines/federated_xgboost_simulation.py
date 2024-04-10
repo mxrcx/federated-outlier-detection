@@ -159,12 +159,12 @@ def evaluate_model_on_all_clients(
             metrics.add_accuracy_value(y_test, y_pred)
             metrics.add_auroc_value(y_test, y_pred_proba)
             metrics.add_auprc_value(y_test, y_pred_proba)
-            metrics.add_confusion_matrix(y_test, y_pred)
+            # metrics.add_confusion_matrix(y_test, y_pred)
             metrics.add_individual_confusion_matrix_values(
                 y_test, y_pred, test["stay_id"]
             )
-            metrics.add_tn_fp_sum()
-            metrics.add_fpr()
+            # metrics.add_tn_fp_sum()
+            # metrics.add_fpr()
 
 
 def run_federated_xgboost_simulation():

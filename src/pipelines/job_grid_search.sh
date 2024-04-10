@@ -3,9 +3,9 @@
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=marco.schaarschmidt@student.hpi.de
 #SBATCH --partition=cpu # -p
-#SBATCH --cpus-per-task=64 # -c
-#SBATCH --mem=512gb
+#SBATCH --cpus-per-task=54 # -c
+#SBATCH --mem=1024gb
 #SBATCH --time=48:00:00 # 48 hours
 #SBATCH --output=logs/job_%j.log # %j is job id
 
-conda run -n fedout-det python3 federated_ocsvm_simulation_numpy.py
+conda run -n fedout-det python3 grid_search_random_split.py

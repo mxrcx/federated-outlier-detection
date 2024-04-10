@@ -27,8 +27,6 @@ class Metrics:
         "Stay IDs with False Negatives",
         "True Positives",
         "Stay IDs with True Positives",
-        "TN-FP-Sum",
-        "FPR",
     ]
 
     def __init__(self):
@@ -526,19 +524,19 @@ class Metrics:
     def calculate_averages_across_random_states(self):
         self.add_random_state_avg("Total Average")
         self.add_metrics_stats(self.METRICS)
-        self.add_confusion_matrix_average()
+        # self.add_confusion_matrix_average()
 
     def calculate_averages_per_hospitalid_across_random_states(self):
         for hospitalid in set(self.metrics_dict["Hospitalid"]["value"]):
             mask = self.metrics_dict["Hospitalid"]["value"] == hospitalid
             self.add_hospitalid_avg(hospitalid)
             self.add_metrics_stats(self.METRICS, mask)
-            self.add_confusion_matrix_average(mask)
+            # self.add_confusion_matrix_average(mask)
 
     def calculate_total_averages_across_hospitalids(self):
         self.add_hospitalid_avg("Total Average")
         self.add_metrics_stats(self.METRICS, on_mean_data=True)
-        self.add_confusion_matrix_average(on_mean_data=True)
+        # self.add_confusion_matrix_average(on_mean_data=True)
 
     def get_metrics_dataframe(
         self,
