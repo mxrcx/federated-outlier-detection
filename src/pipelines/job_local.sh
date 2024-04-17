@@ -3,9 +3,9 @@
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=marco.schaarschmidt@student.hpi.de
 #SBATCH --partition=cpu # -p
-#SBATCH --cpus-per-task=42 # -c
-#SBATCH --mem=800gb
-#SBATCH --time=48:00:00 # 48 hours
+#SBATCH --cpus-per-task=10 # -c
+#SBATCH --mem=32gb
+#SBATCH --time=24:00:00 # 48 hours
 #SBATCH --output=logs/job_%j.log # %j is job id
 
 conda run -n fedout-det python3 local.py

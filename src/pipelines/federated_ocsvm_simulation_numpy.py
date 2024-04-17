@@ -147,14 +147,17 @@ def evaluate_model_on_all_clients(
 
             # Perform scaling
             X_test = scale_X_test(X_test)
+            
+            # Invert the outcome label
+            y_test = [-1 if x == 1 else 1 for x in y_test]
 
             # Evaluate
             y_pred = eval_model.predict(X_test)
             y_pred_proba = eval_model.decision_function(X_test)
 
             # Invert the predictions and scores if the model is an anomaly detection model
-            y_pred = y_pred * -1
-            y_pred_proba = y_pred_proba * -1
+            # y_pred = y_pred * -1
+            # y_pred_proba = y_pred_proba * -1
 
             metrics.add_hospitalid(hospitalid)
             metrics.add_random_state(random_state)

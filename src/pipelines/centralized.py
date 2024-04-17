@@ -60,6 +60,10 @@ def single_cv_run(
         # Perform scaling
         X_train, X_test = scale(X_train, X_test)
 
+        # Invert the outcome train label
+        if model_name in ["isolationforest", "oneclasssvm"]:
+            y_train = [-1 if x == 1 else 1 for x in y_train]
+
         # Fit model
         model.fit(X_train, y_train)
 
@@ -70,17 +74,16 @@ def single_cv_run(
         except AttributeError:
             y_score = model.decision_function(X_test)
 
-        # Invert the predictions and scores if the model is an anomaly detection model
-        if model_name in ["isolationforest", "oneclasssvm"]:
-            y_pred = y_pred * -1
-            y_score = y_score * -1
-
         # Add metrics to the metrics object for each hospital
         for hospitalid in test["hospitalid"].unique():
             mask = test["hospitalid"] == hospitalid
             y_test_hospital = y_test[mask]
             y_pred_hospital = y_pred[mask]
             y_score_hospital = y_score[mask]
+
+            # Invert the outcome test label
+            if model_name in ["isolationforest", "oneclasssvm"]:
+                y_test_hospital = [-1 if x == 1 else 1 for x in y_test_hospital]
 
             metrics.add_hospitalid(hospitalid)
             metrics.add_random_state(random_state)

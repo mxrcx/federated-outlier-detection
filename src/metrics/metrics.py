@@ -84,16 +84,6 @@ class Metrics:
                 "mean": [],
                 "std": [],
             },
-            "True Negatives": {
-                "value": [],
-                "mean": [],
-                "std": [],
-            },
-            "Stay IDs with True Negatives": {
-                "value": [],
-                "mean": [],
-                "std": [],
-            },
             "False Positives": {
                 "value": [],
                 "mean": [],
@@ -120,6 +110,16 @@ class Metrics:
                 "std": [],
             },
             "Stay IDs with True Positives": {
+                "value": [],
+                "mean": [],
+                "std": [],
+            },
+            "True Negatives": {
+                "value": [],
+                "mean": [],
+                "std": [],
+            },
+            "Stay IDs with True Negatives": {
                 "value": [],
                 "mean": [],
                 "std": [],
