@@ -36,7 +36,7 @@ def single_random_split_run(
     # train, test = split_data_on_stay_ids(data, test_size, random_state)
 
     # Shrink down train and test to 30% of their current samples randomly
-    train = data.sample(frac=0.3, random_state=random_state)
+    train = data.sample(frac=0.01, random_state=random_state)
     # test = test.sample(frac=0.3, random_state=random_state)
 
     logging.debug("Imputing missing values...")

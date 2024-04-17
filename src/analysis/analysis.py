@@ -134,14 +134,10 @@ def create_average_diff(combined_df):
         "Accuracy",
         "AUROC",
         "AUPRC",
-        "TN",
-        "TN Stay IDs",
         "FP",
         "FP Stay IDs",
         "FN",
         "FN Stay IDs",
-        "TP",
-        "TP Stay IDs",
     ]
     average_diff_data = {}
     comparison_suffixes = ["LOGO-Local", "LOGO-Fed", "Local-Fed"]

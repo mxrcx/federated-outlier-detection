@@ -19,14 +19,18 @@ class Metrics:
         "Accuracy",
         "AUROC",
         "AUPRC",
-        "True Negatives",
-        "Stay IDs with True Negatives",
+        "Positive labels (TP + FN)",
+        "Stay IDs with Positive labels (TP + FN)",
+        "Negative labels (TN + FP)",
+        "Stay IDs with Negative labels (TN + FP)",
         "False Positives",
         "Stay IDs with False Positives",
         "False Negatives",
         "Stay IDs with False Negatives",
         "True Positives",
         "Stay IDs with True Positives",
+        "True Negatives",
+        "Stay IDs with True Negatives",
     ]
 
     def __init__(self):
@@ -60,9 +64,25 @@ class Metrics:
                 "mean": [],
                 "std": [],
             },
-            "Confusion Matrix": {
+            "Positive labels (TP + FN)": {
                 "value": [],
                 "mean": [],
+                "std": [],
+            },
+            "Stay IDs with Positive labels (TP + FN)": {
+                "value": [],
+                "mean": [],
+                "std": [],
+            },
+            "Negative labels (TN + FP)": {
+                "value": [],
+                "mean": [],
+                "std": [],
+            },
+            "Stay IDs with Negative labels (TN + FP)": {
+                "value": [],
+                "mean": [],
+                "std": [],
             },
             "True Negatives": {
                 "value": [],
@@ -100,16 +120,6 @@ class Metrics:
                 "std": [],
             },
             "Stay IDs with True Positives": {
-                "value": [],
-                "mean": [],
-                "std": [],
-            },
-            "TN-FP-Sum": {
-                "value": [],
-                "mean": [],
-                "std": [],
-            },
-            "FPR": {
                 "value": [],
                 "mean": [],
                 "std": [],
@@ -230,18 +240,6 @@ class Metrics:
             auprc = "Not defined"
 
         self.metrics_dict["AUPRC"]["value"].append(auprc)
-
-    def add_confusion_matrix(self, y_true, y_pred):
-        """
-        Add confusion matrix to metrics dictionary.
-
-        Args:
-            y_true: True labels
-            y_pred: Predicted labels
-            stay_ids: Stay IDs
-        """
-        cm = confusion_matrix(y_true, y_pred)
-        self.metrics_dict["Confusion Matrix"]["value"].append(cm)
 
     def add_false_positives(self, y_true, y_pred, stay_ids):
         """
@@ -367,6 +365,24 @@ class Metrics:
             stay_ids_with_tn
         )
 
+    def add_positve_negative_label_counts(self):
+        self.metrics_dict["Positive labels (TP + FN)"]["value"].append(
+            self.metrics_dict["True Positives"]["value"][-1]
+            + self.metrics_dict["False Negatives"]["value"][-1]
+        )
+        self.metrics_dict["Stay IDs with Positive labels (TP + FN)"]["value"].append(
+            self.metrics_dict["Stay IDs with True Positives"]["value"][-1]
+            + self.metrics_dict["Stay IDs with False Negatives"]["value"][-1]
+        )
+        self.metrics_dict["Negative labels (TN + FP)"]["value"].append(
+            self.metrics_dict["True Negatives"]["value"][-1]
+            + self.metrics_dict["False Positives"]["value"][-1]
+        )
+        self.metrics_dict["Stay IDs with Negative labels (TN + FP)"]["value"].append(
+            self.metrics_dict["Stay IDs with True Negatives"]["value"][-1]
+            + self.metrics_dict["Stay IDs with False Positives"]["value"][-1]
+        )
+
     def add_individual_confusion_matrix_values(self, y_true, y_pred, stay_ids):
         """
         Add individual confusion matrix values to metrics dictionary.
@@ -381,40 +397,7 @@ class Metrics:
         self.add_true_positives(y_true, y_pred, stay_ids)
         self.add_true_negatives(y_true, y_pred, stay_ids)
 
-    def _get_last_confusion_matrix(self):
-        """
-        Get last confusion matrix.
-
-        Returns:
-            np.ndarray: Last confusion matrix
-        """
-        return self.metrics_dict["Confusion Matrix"]["value"][-1]
-
-    def add_tn_fp_sum(self):
-        """
-        Add sum of true negatives and false positives to metrics dictionary.
-        """
-        cm = self._get_last_confusion_matrix()
-        tn = cm[0][0]
-        try:
-            fp = cm[0][1]
-        except IndexError:
-            fp = 0
-        tn_fp_sum = tn + fp
-        self.metrics_dict["TN-FP-Sum"]["value"].append(tn_fp_sum)
-
-    def add_fpr(self):
-        """
-        Add false positive rate to metrics dictionary.
-        """
-        cm = self._get_last_confusion_matrix()
-        tn = cm[0][0]
-        try:
-            fp = cm[0][1]
-        except IndexError:
-            fp = 0
-        fpr = round(fp / (tn + fp), 4)
-        self.metrics_dict["FPR"]["value"].append(fpr)
+        self.add_positve_negative_label_counts()
 
     def _get_metric_list(
         self,
@@ -499,44 +482,19 @@ class Metrics:
             self.metrics_dict[metric]["mean"].append(metric_mean)
             self.metrics_dict[metric]["std"].append(metric_std)
 
-    def add_confusion_matrix_average(
-        self, mask: Optional[np.ndarray] = None, on_mean_data: bool = False
-    ):
-        """
-        Add average confusion matrix to metrics dictionary. Consider only the last entries_to_consider entries.
-
-        Args:
-            mask: Mask for filtering
-            on_mean_data: If True, calculate average on mean data
-        """
-        if on_mean_data:
-            cm_list = self.metrics_dict["Confusion Matrix"]["mean"]
-        else:
-            cm_list = self.metrics_dict["Confusion Matrix"]["value"]
-
-        # If specified: filter elements
-        if mask is not None:
-            cm_list = [value for value, include in zip(cm_list, mask) if include]
-
-        cm_avg = sum(cm_list)
-        self.metrics_dict["Confusion Matrix"]["mean"].append(cm_avg)
-
     def calculate_averages_across_random_states(self):
         self.add_random_state_avg("Total Average")
         self.add_metrics_stats(self.METRICS)
-        # self.add_confusion_matrix_average()
 
     def calculate_averages_per_hospitalid_across_random_states(self):
         for hospitalid in set(self.metrics_dict["Hospitalid"]["value"]):
             mask = self.metrics_dict["Hospitalid"]["value"] == hospitalid
             self.add_hospitalid_avg(hospitalid)
             self.add_metrics_stats(self.METRICS, mask)
-            # self.add_confusion_matrix_average(mask)
 
     def calculate_total_averages_across_hospitalids(self):
         self.add_hospitalid_avg("Total Average")
         self.add_metrics_stats(self.METRICS, on_mean_data=True)
-        # self.add_confusion_matrix_average(on_mean_data=True)
 
     def get_metrics_dataframe(
         self,
