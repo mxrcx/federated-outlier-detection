@@ -38,8 +38,15 @@ def set_initial_params(model: GaussianMixture) -> GaussianMixture:
 
     model.weights_ = np.zeros((n_components,))
     model.means_ = np.zeros((n_components, n_features))
-    model.covariances_ = np.zeros((n_components, n_features, n_features))
-    model.precisions_ = np.zeros((n_components, n_features, n_features))
-    model.precisions_cholesky_ = np.zeros((n_components, n_features, n_features))
-    
+
+    # if spherical instead of full, then covariances_ is 1D array
+    model.covariances_ = np.zeros((n_components,))
+    model.precisions_ = np.zeros((n_components,))
+    model.precisions_cholesky_ = np.zeros((n_components,))
+
+    # if full instead of spherical, then covariances_ is 3D array
+    # model.covariances_ = np.zeros((n_components, n_features, n_features))
+    # model.precisions_ = np.zeros((n_components, n_features, n_features))
+    # model.precisions_cholesky_ = np.zeros((n_components, n_features, n_features))
+
     return model

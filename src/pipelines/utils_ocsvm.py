@@ -1,6 +1,5 @@
 import numpy as np
 from sklearn.linear_model import SGDOneClassSVM
-from sklearn.utils.extmath import safe_sparse_dot
 
 from flwr.common import NDArrays
 

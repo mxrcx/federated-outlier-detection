@@ -111,15 +111,29 @@ def get_model(model_name, random_state, n_jobs):
     elif model_name == "isolationforest":
         from sklearn.ensemble import IsolationForest
 
-        return IsolationForest(random_state=random_state, n_jobs=n_jobs)
+        return IsolationForest(
+            bootstrap=True,
+            contamination=0.01,
+            max_features=0.5,
+            max_samples=0.25,
+            n_estimators=200,
+            random_state=random_state,
+            n_jobs=n_jobs,
+        )
     elif model_name == "gaussianmixture":
         from sklearn.mixture import GaussianMixture
 
-        return GaussianMixture(n_components=1, random_state=random_state)
+        return GaussianMixture(
+            covariance_type="spherical",
+            init_params="random",
+            max_iter=50,
+            n_components=2,
+            random_state=random_state,
+        )
     elif model_name == "oneclasssvm":
-        from sklearn.svm import OneClassSVM
+        from sklearn.linear_model import SGDOneClassSVM
 
-        return OneClassSVM(kernel="linear", nu=0.01)
+        return SGDOneClassSVM(eta0=0.01, learning_rate="optimal", max_iter=500, nu=0.01)
     else:
         raise ValueError(
             "Invalid model name. Specifiy a different model in the configuration file, choose from: 'randomforestclassifier', 'xgboostclassifier', 'isolationforest', 'gaussianmixture', 'oneclasssvm'"

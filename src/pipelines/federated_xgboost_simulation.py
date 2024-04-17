@@ -18,6 +18,7 @@ from data.saving import save_csv
 from data.make_hospital_splits import make_hospital_splits
 from data.processing import impute, scale_X_test
 from metrics.metrics import Metrics
+from training.preparation import get_model
 import xgboost as xgb
 
 # FL experimental settings
@@ -124,7 +125,7 @@ def evaluate_model_on_all_clients(
     for random_state in range(random_split_reps):
         # Create an evaluation model and set its "weights" to the last saved during fl simulation
         logging.info("Create eval model with last saved params...")
-        eval_model = xgb.XGBClassifier()
+        eval_model = get_model("xgboostclassifier", random_state, n_jobs=-1)
         global_model = None
         for item in persistent_storage[
             f"last_model_params_rstate{random_state}"
