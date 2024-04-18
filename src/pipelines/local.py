@@ -6,6 +6,7 @@ sys.path.append("..")
 
 import ray
 import numpy as np
+import shap
 
 from data.loading import load_parquet, load_configuration
 from data.saving import save_csv
@@ -39,11 +40,6 @@ def single_local_run(train, test, model_name, random_state, columns_to_drop):
     # Perform scaling
     X_train, X_test = scale(X_train, X_test)
 
-    # Invert the outcome label
-    if model_name in ["isolationforest", "oneclasssvm"]:
-        y_train = [-1 if x == 1 else 1 for x in y_train]
-        y_test = [-1 if x == 1 else 1 for x in y_test]
-
     # Create & fit the model
     # the n_jobs parameter should be at most what the num_cpus value is in the ray.remote annotation
     model = get_model(model_name, random_state, n_jobs=2)
@@ -59,6 +55,11 @@ def single_local_run(train, test, model_name, random_state, columns_to_drop):
         y_score = model.predict_proba(X_test)
     except AttributeError:
         y_score = model.decision_function(X_test)
+        
+    # Invert the outcome label
+    if model_name in ["isolationforest", "oneclasssvm"]:
+        y_pred = [1 if x == -1 else 0 for x in y_pred]
+        y_score = y_score * -1
 
     return (y_pred, y_score, y_test, test["stay_id"])
 

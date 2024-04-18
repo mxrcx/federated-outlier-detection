@@ -20,7 +20,7 @@ filename:
   processed: "processed.parquet"
 
 config_settings:
-  model: "gaussianmixture" # Model to use for training
+  model: "gmm" # Model to use for training
   random_split_reps: 5 # Number of repetitions for each performed random split of the data
   cv_folds: 5 # Number of folds for cross-validation
   test_size: 0.2 # Test size for the train-test split

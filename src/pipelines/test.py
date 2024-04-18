@@ -1,6 +1,7 @@
 from data.loading import load_configuration, load_parquet, load_csv
 import matplotlib.pyplot as plt
 import os
+import pandas as pd
 
 
 def print_shapes():
@@ -26,7 +27,39 @@ def print_shapes():
     print(f"Original data shape: {original_data.shape}")
     print(f"Features shape: {features.shape}")
     print(f"Processed data shape: {processed_data.shape}")
+    
+def print_statistics():
+    path, filename, _config_settings = load_configuration()
+    data = load_parquet(path["features"], filename["features"], optimize_memory=True)
+    
+    count_sepsis_imps = data[data["label"] == 1].shape[0]
+    print(f"Number of IMPs with sepsis: {count_sepsis_imps}")
+    
+    unique_patients = data["uniquepid"].nunique()
+    print(f"Number of unique patients in cohort: {unique_patients}")
+    
+    data_sepsis = data[data["label"] == 1]
+    
+    unique_sepsis_patients = data_sepsis["uniquepid"].nunique()
+    print(f"Number of unique sepsis patients in cohort: {unique_sepsis_patients}")
+    
+    missing_percentage = data.isnull().mean() * 100
+    missing_info = pd.DataFrame(
+        {
+            "Feature": missing_percentage.index,
+            "MissingPercentage": missing_percentage.values,
+        }
+    )
+    
+    lowest_missing = missing_info.sort_values("MissingPercentage").head(20)
+    highest_missing = missing_info.sort_values("MissingPercentage", ascending=False).head(20)
 
+    print("Lowest missing values:")
+    print(lowest_missing)
+
+    print("Highest missing values:")
+    print(highest_missing)
+    
 
 def plot_auprc_histogram():
     path, filename, _config_settings = load_configuration()
@@ -59,7 +92,8 @@ def plot_auprc_histogram():
 
 def run_test():
     # print_shapes()
-    plot_auprc_histogram()
+    # plot_auprc_histogram()
+    print_statistics()
 
 
 if __name__ == "__main__":

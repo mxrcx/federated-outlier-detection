@@ -7,7 +7,7 @@ sys.path.append("..")
 from sklearn.ensemble import IsolationForest
 from sklearn.linear_model import SGDOneClassSVM
 from sklearn.mixture import GaussianMixture
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 
 from data.loading import load_configuration, load_parquet
 from data.processing import impute, scale, scale_X_test
@@ -36,7 +36,7 @@ def single_random_split_run(
     # train, test = split_data_on_stay_ids(data, test_size, random_state)
 
     # Shrink down train and test to 30% of their current samples randomly
-    train = data.sample(frac=0.01, random_state=random_state)
+    # train = data.sample(frac=0.01, random_state=random_state)
     # test = test.sample(frac=0.3, random_state=random_state)
 
     logging.debug("Imputing missing values...")
@@ -65,6 +65,13 @@ def single_random_split_run(
             "max_features": [0.5, 0.75, 1.0],
             "bootstrap": [True],
         }
+        param_grid_random = {
+            "n_estimators": [10, 50, 100, 150, 200, 300, 500],
+            "max_samples": [0.25, 0.5, 0.75, 1.0],
+            "contamination": [0.001, 0.005, 0.01, 0.03, 0.05, 0.07, 0.1, 0.3, 0.5],
+            "max_features": [0.5, 0.75, 1.0],
+            "bootstrap": [True],
+        }
     elif model_name == "gaussianmixture":
         model = GaussianMixture(random_state=random_state)
         param_grid = {
@@ -72,6 +79,12 @@ def single_random_split_run(
             "covariance_type": ["full", "tied", "diag", "spherical"],
             "init_params": ["kmeans", "random"],
             "max_iter": [50, 100, 200],
+        }
+        param_grid_random = {
+            "n_components": [1, 2, 3, 4, 5, 6, 7, 8, 10, 13, 16],
+            "covariance_type": ["full", "tied", "diag", "spherical"],
+            "init_params": ["kmeans", "random"],
+            "max_iter": [50, 75, 100, 125, 150, 200, 250],
         }
     elif model_name == "oneclasssvm":
         model = SGDOneClassSVM()
@@ -81,22 +94,50 @@ def single_random_split_run(
             "eta0": [0.01, 0.05, 0.1],
             "max_iter": [500, 1000, 1500],
         }
+        param_grid_random = {
+            "nu": [0.001, 0.005, 0.01, 0.03, 0.05, 0.07, 0.1, 0.3, 0.5],
+            "learning_rate": ["optimal", "adaptive", "constant", "invscaling"],
+            "eta0": [0.01, 0.03, 0.05, 0.1, 0.3, 0.5],
+            "max_iter": [500, 750, 1000, 1250, 1500, 2000],
+        }
     else:
         model = IsolationForest(random_state=random_state, n_jobs=-1)
         param_grid = {}
 
-    grid_search = GridSearchCV(model, param_grid, cv=5, scoring="accuracy", n_jobs=-1)
+    random_search = RandomizedSearchCV(
+        model,
+        param_distributions=param_grid_random,
+        n_iter=15,
+        scoring="accuracy",
+        cv=5,
+        random_state=random_state,
+        n_jobs=-1,
+    )
+
+    grid_search = GridSearchCV(
+        model,
+        param_grid,
+        cv=5,
+        scoring=["average_precision", "roc_auc", "accuracy"],
+        refit="average_precision",
+        n_jobs=-1,
+    )
 
     logging.debug(f"Training a {model_name} model...")
-    grid_search.fit(X_train, y_train)
+    # grid_search.fit(X_train, y_train)
+    random_search.fit(X_train, y_train)
 
-    best_params = grid_search.best_params_
-    best_score = grid_search.best_score_
+    # best_params = grid_search.best_params_
+    # best_score = grid_search.best_score_
+    best_params = random_search.best_params_
+    best_score = random_search.best_score_
 
     logging.debug(f"Best parameters for {model_name} found:")
     logging.debug(best_params)
     logging.debug(f"Best score for {model_name} found:")
     logging.debug(best_score)
+    # logging.debug(grid_search.cv_results_)
+    logging.debug(random_search.cv_results_)
 
 
 def grid_search_random_split():
@@ -113,17 +154,12 @@ def grid_search_random_split():
 
     for random_state in range(config_settings["random_split_reps"]):
         logging.info(f"Starting a single run with random_state={random_state}")
+        # hospital 58 or 67
         data = load_parquet(
-            os.path.join(path["splits"], "group_hospital_splits"),
-            f"fold0_rstate{random_state}_train.parquet",
+            os.path.join(path["splits"], "individual_hospital_splits"),
+            f"hospital73_rstate{random_state}_train.parquet",
             optimize_memory=True,
         )
-        # data_1 = load_parquet(
-        #    os.path.join(path["splits"], "group_hospital_splits"),
-        #    f"fold1_rstate{random_state}_train.parquet",
-        #    optimize_memory=True,
-        # )
-        # data = pd.concat([data_0, data_1], ignore_index=True)
 
         single_random_split_run(
             model_name,

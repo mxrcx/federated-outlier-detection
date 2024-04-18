@@ -1,6 +1,8 @@
 import os
 import logging
 import sys
+import shap
+import matplotlib.pyplot as plt
 
 sys.path.append("..")
 from data.loading import load_parquet, load_configuration
@@ -14,6 +16,7 @@ from training.preparation import get_model, reformatting_model_name
 def single_cv_run(
     model_name,
     path_to_splits,
+    path_to_results,
     random_state,
     cv_folds,
     columns_to_drop,
@@ -60,10 +63,6 @@ def single_cv_run(
         # Perform scaling
         X_train, X_test = scale(X_train, X_test)
 
-        # Invert the outcome train label
-        if model_name in ["isolationforest", "oneclasssvm"]:
-            y_train = [-1 if x == 1 else 1 for x in y_train]
-
         # Fit model
         model.fit(X_train, y_train)
 
@@ -74,6 +73,16 @@ def single_cv_run(
         except AttributeError:
             y_score = model.decision_function(X_test)
 
+        # Create shap values plot
+        if model_name in [""]: #["xgboostclassifier"]:
+            explainer = shap.TreeExplainer(model, X_test)
+            shap_values = explainer(X_test)
+            shap.plots.beeswarm(shap_values, show=False)
+            plt.savefig(
+                os.path.join(path_to_results, "centralized_xgboost_shap.png")
+            )
+            plt.close()
+
         # Add metrics to the metrics object for each hospital
         for hospitalid in test["hospitalid"].unique():
             mask = test["hospitalid"] == hospitalid
@@ -81,9 +90,10 @@ def single_cv_run(
             y_pred_hospital = y_pred[mask]
             y_score_hospital = y_score[mask]
 
-            # Invert the outcome test label
+            # Invert the outcome label
             if model_name in ["isolationforest", "oneclasssvm"]:
-                y_test_hospital = [-1 if x == 1 else 1 for x in y_test_hospital]
+                y_pred_hospital = [1 if x == -1 else 0 for x in y_pred_hospital]
+                y_score_hospital = y_score_hospital * -1
 
             metrics.add_hospitalid(hospitalid)
             metrics.add_random_state(random_state)
@@ -110,6 +120,7 @@ def leave_one_group_out_pipeline():
         single_cv_run(
             model_name,
             path["splits"],
+            path["results"],
             random_state,
             config_settings["cv_folds"],
             config_settings["training_columns_to_drop"],
