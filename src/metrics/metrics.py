@@ -179,7 +179,7 @@ class Metrics:
             y_true: True labels
             y_pred: Predicted labels
         """
-        accuracy = round(accuracy_score(y_true, y_pred), 4)
+        accuracy = accuracy_score(y_true, y_pred) * 100
         self.metrics_dict["Accuracy"]["value"].append(accuracy)
 
     def _get_y_score(self, y_pred_proba):
@@ -214,7 +214,7 @@ class Metrics:
             if np.sum(y_true) == 0:  # If there are no positive samples in true labels
                 auroc = "No Sepsis Occurences"
             else:
-                auroc = round(roc_auc_score(y_true, y_score), 4)
+                auroc = roc_auc_score(y_true, y_score) * 100
         except ValueError:
             auroc = "Not defined"
 
@@ -235,7 +235,7 @@ class Metrics:
             if np.sum(y_true) == 0:  # If there are no positive samples in true labels
                 auprc = "No Sepsis Occurences"
             else:
-                auprc = round(average_precision_score(y_true, y_score), 4)
+                auprc = average_precision_score(y_true, y_score) * 100
         except ValueError:
             auprc = "Not defined"
 
@@ -250,7 +250,7 @@ class Metrics:
             y_pred: Predicted labels
             stay_ids: Stay IDs
         """
-        cm = confusion_matrix(y_true, y_pred)
+        cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
         try:
             fp = cm[0][1]
         except IndexError:
@@ -281,7 +281,7 @@ class Metrics:
             y_pred: Predicted labels
             stay_ids: Stay IDs
         """
-        cm = confusion_matrix(y_true, y_pred)
+        cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
         try:
             fn = cm[1][0]
         except IndexError:
@@ -312,7 +312,7 @@ class Metrics:
             y_pred: Predicted labels
             stay_ids: Stay IDs
         """
-        cm = confusion_matrix(y_true, y_pred)
+        cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
         try:
             tp = cm[1][1]
         except IndexError:
@@ -343,7 +343,7 @@ class Metrics:
             y_pred: Predicted labels
             stay_ids: Stay IDs
         """
-        cm = confusion_matrix(y_true, y_pred)
+        cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
         try:
             tn = cm[0][0]
         except IndexError:
@@ -455,9 +455,9 @@ class Metrics:
         """
         try:
             if stat_type == "mean":
-                return round(sum(metric_list) / len(metric_list), 4)
+                return round(sum(metric_list) / len(metric_list), 2)
             elif stat_type == "std":
-                return round(np.std(metric_list), 4)
+                return round(np.std(metric_list), 2)
         except Exception:
             return f"{stat_type.capitalize()} calculation not possible"
 

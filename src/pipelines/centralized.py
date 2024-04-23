@@ -3,6 +3,7 @@ import logging
 import sys
 import shap
 import matplotlib.pyplot as plt
+import xgboost as xgb
 
 sys.path.append("..")
 from data.loading import load_parquet, load_configuration
@@ -53,6 +54,13 @@ def single_cv_run(
         logging.debug("Imputing missing values...")
         train = impute(train)
         test = impute(test)
+        
+        # Add relative time column
+        train = train.sort_values(by=['stay_id', 'time'])
+        train['time_relative'] = train.groupby('stay_id').cumcount()
+        test = test.sort_values(by=['stay_id', 'time'])
+        test['time_relative'] = test.groupby('stay_id').cumcount()
+        columns_to_drop.append("time")
 
         # Define the features and target
         X_train = train.drop(columns=columns_to_drop)
@@ -72,16 +80,12 @@ def single_cv_run(
             y_score = model.predict_proba(X_test)
         except AttributeError:
             y_score = model.decision_function(X_test)
-
-        # Create shap values plot
-        if model_name in [""]: #["xgboostclassifier"]:
-            explainer = shap.TreeExplainer(model, X_test)
-            shap_values = explainer(X_test)
-            shap.plots.beeswarm(shap_values, show=False)
-            plt.savefig(
-                os.path.join(path_to_results, "centralized_xgboost_shap.png")
-            )
-            plt.close()
+        
+        # Create feature importance plot
+        if model_name == "xgboostclassifier":
+            ax = xgb.plot_importance(model, max_num_features=15)
+            ax.figure.tight_layout()
+            ax.figure.savefig(os.path.join(path_to_results, "centralized_xgboost_feature_importance.png"))
 
         # Add metrics to the metrics object for each hospital
         for hospitalid in test["hospitalid"].unique():
@@ -108,7 +112,12 @@ def single_cv_run(
 def leave_one_group_out_pipeline():
     logging.info("Loading configuration...")
     path, _filename, config_settings = load_configuration()
-    model_name = reformatting_model_name(config_settings["model"])
+    
+    # Get model_name
+    if len(sys.argv) > 1:
+        model_name = reformatting_model_name(sys.argv[1])
+    else:
+        model_name = reformatting_model_name(config_settings["model"])
 
     if not os.path.exists(os.path.join(path["splits"], "group_hospital_splits")):
         logging.info("Make hospital splits...")
@@ -116,7 +125,7 @@ def leave_one_group_out_pipeline():
 
     metrics = Metrics()
 
-    for random_state in range(config_settings["random_split_reps"]):
+    for random_state in range(1): #config_settings["random_split_reps"]):
         single_cv_run(
             model_name,
             path["splits"],

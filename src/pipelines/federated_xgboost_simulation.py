@@ -117,6 +117,7 @@ def get_client_fn(path_to_splits, hospitalids, random_state, training_columns_to
 
 def evaluate_model_on_all_clients(
     path_to_splits,
+    path_to_results,
     hospitalids,
     random_split_reps,
     training_columns_to_drop,
@@ -132,7 +133,12 @@ def evaluate_model_on_all_clients(
         ].tensors:
             global_model = bytearray(item)
         eval_model.load_model(global_model)
-
+        
+        # Create feature importance plot
+        ax = xgb.plot_importance(eval_model, max_num_features=15)
+        ax.figure.tight_layout()
+        ax.figure.savefig(os.path.join(path_to_results, "federated_xgboost_feature_importance.png"))
+            
         logging.info("Evaluate model on all clients...")
         for hospitalid in hospitalids:
             test = load_parquet(
@@ -143,6 +149,11 @@ def evaluate_model_on_all_clients(
 
             # Perform imputation
             test = impute(test)
+            
+            # Add relative time column
+            test = test.sort_values(by=['stay_id', 'time'])
+            test['time_relative'] = test.groupby('stay_id').cumcount()
+            training_columns_to_drop.append("time")
 
             # Define the features and target
             X_test = test.drop(columns=training_columns_to_drop)
@@ -198,6 +209,7 @@ def run_federated_xgboost_simulation():
 
     evaluate_model_on_all_clients(
         path["splits"],
+        path["results"],
         hospitalids,
         config_settings["random_split_reps"],
         config_settings["training_columns_to_drop"],

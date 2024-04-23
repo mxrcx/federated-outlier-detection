@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import sys
 import re
 from data.loading import load_csv, load_configuration
 from data.saving import save_csv
@@ -200,7 +201,12 @@ def convert_cm_columns(df):
 
 def analysis():
     _path, _filename, config_settings = load_configuration()
-    model_name = reformatting_model_name(config_settings["model"])
+    
+    # Get model_name
+    if len(sys.argv) > 1:
+        model_name = reformatting_model_name(sys.argv[1])
+    else:
+        model_name = reformatting_model_name(config_settings["model"])
 
     # Step 1 - Load data
     results_centralized_avg, results_local_avg, results_federated_avg = load_csv_files(

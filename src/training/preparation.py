@@ -96,7 +96,7 @@ def get_model(model_name, random_state, n_jobs):
         )
     elif model_name == "xgboostclassifier":
         import xgboost as xgb
-
+        
         return xgb.XGBClassifier(
             eval_metric="aucpr",
             learning_rate=0.1,

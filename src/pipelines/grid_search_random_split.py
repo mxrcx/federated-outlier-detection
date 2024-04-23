@@ -107,8 +107,8 @@ def single_random_split_run(
     random_search = RandomizedSearchCV(
         model,
         param_distributions=param_grid_random,
-        n_iter=15,
-        scoring="accuracy",
+        n_iter=20,
+        scoring="average_precision",
         cv=5,
         random_state=random_state,
         n_jobs=-1,
@@ -137,13 +137,18 @@ def single_random_split_run(
     logging.debug(f"Best score for {model_name} found:")
     logging.debug(best_score)
     # logging.debug(grid_search.cv_results_)
-    logging.debug(random_search.cv_results_)
+    # logging.debug(random_search.cv_results_)
 
 
 def grid_search_random_split():
     logging.debug("Loading configuration...")
     path, filename, config_settings = load_configuration()
-    model_name = reformatting_model_name(config_settings["model"])
+    
+    # Get model_name
+    if len(sys.argv) > 1:
+        model_name = reformatting_model_name(sys.argv[1])
+    else:
+        model_name = reformatting_model_name(config_settings["model"])
 
     if not os.path.exists(os.path.join(path["processed"], filename["processed"])):
         logging.info("Preprocess data...")
@@ -156,8 +161,8 @@ def grid_search_random_split():
         logging.info(f"Starting a single run with random_state={random_state}")
         # hospital 58 or 67
         data = load_parquet(
-            os.path.join(path["splits"], "individual_hospital_splits"),
-            f"hospital73_rstate{random_state}_train.parquet",
+            os.path.join(path["splits"], "group_hospital_splits"),
+            f"fold0_rstate{random_state}_train.parquet",
             optimize_memory=True,
         )
 

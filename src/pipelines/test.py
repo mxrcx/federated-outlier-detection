@@ -1,11 +1,12 @@
 from data.loading import load_configuration, load_parquet, load_csv
+from data.processing import reformat_time_column, encode_categorical_columns
 import matplotlib.pyplot as plt
 import os
 import pandas as pd
 
 
 def print_shapes():
-    path, filename, _config_settings = load_configuration()
+    path, filename, config_settings = load_configuration()
     dynamic_data = load_parquet(
         path["cohorts"], filename["dynamic_data"], optimize_memory=True
     )
@@ -18,6 +19,8 @@ def print_shapes():
     features = load_parquet(
         path["features"], filename["features"], optimize_memory=True
     )
+    features = reformat_time_column(features)
+    features = encode_categorical_columns(features, config_settings["training_columns_to_drop"])
     processed_data = load_parquet(
         path["processed"], filename["processed"], optimize_memory=True
     )
@@ -25,8 +28,15 @@ def print_shapes():
     print(f"Original data - Dynamic concepts shape: {dynamic_data.shape}")
     print(f"Original data - Static concepts shape: {static_data.shape}")
     print(f"Original data shape: {original_data.shape}")
+    
     print(f"Features shape: {features.shape}")
+    print(f"Feature column names before: {list(features.columns)}")
+
     print(f"Processed data shape: {processed_data.shape}")
+    print(f"Feature column names after: {list(processed_data.columns)}")
+    
+    removed_features = [item for item in list(features.columns) if item not in list(processed_data.columns)]
+    print(f"Removed features: {len(removed_features)} {removed_features}")
     
 def print_statistics():
     path, filename, _config_settings = load_configuration()
@@ -91,7 +101,7 @@ def plot_auprc_histogram():
 
 
 def run_test():
-    # print_shapes()
+    print_shapes()
     # plot_auprc_histogram()
     print_statistics()
 

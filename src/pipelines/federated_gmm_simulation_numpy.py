@@ -145,6 +145,11 @@ def evaluate_model_on_all_clients(
 
             # Perform imputation
             test = impute(test)
+            
+            # Add relative time column
+            test = test.sort_values(by=['stay_id', 'time'])
+            test['time_relative'] = test.groupby('stay_id').cumcount()
+            training_columns_to_drop.append("time")
 
             # Define the features and target
             X_test = test.drop(columns=training_columns_to_drop)

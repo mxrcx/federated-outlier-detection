@@ -6,7 +6,8 @@ sys.path.append("..")
 
 import ray
 import numpy as np
-import shap
+import xgboost as xgb
+import matplotlib as plt
 
 from data.loading import load_parquet, load_configuration
 from data.saving import save_csv
@@ -15,9 +16,11 @@ from data.make_hospital_splits import make_hospital_splits
 from metrics.metrics import Metrics
 from training.preparation import get_model, reformatting_model_name
 
+# List to store feature importances from each xgb model
+feature_importances_list = []
 
 @ray.remote(num_cpus=2)
-def single_local_run(train, test, model_name, random_state, columns_to_drop):
+def single_local_run(train, test, model_name, path_to_results, random_state, columns_to_drop):
     """
     Perform a single run of the local pipeline.
 
@@ -30,6 +33,13 @@ def single_local_run(train, test, model_name, random_state, columns_to_drop):
     logging.debug("Imputing missing values...")
     train = impute(train)
     test = impute(test)
+    
+    # Add relative time column
+    train = train.sort_values(by=['stay_id', 'time'])
+    train['time_relative'] = train.groupby('stay_id').cumcount()
+    test = test.sort_values(by=['stay_id', 'time'])
+    test['time_relative'] = test.groupby('stay_id').cumcount()
+    columns_to_drop.append("time")
 
     # Define the features and target
     X_train = train.drop(columns=columns_to_drop)
@@ -56,6 +66,10 @@ def single_local_run(train, test, model_name, random_state, columns_to_drop):
     except AttributeError:
         y_score = model.decision_function(X_test)
         
+    # Add feature importances of current xgb model to list
+    if model_name == "xgboostclassifier":
+        feature_importances_list.append(model.feature_importances_)
+            
     # Invert the outcome label
     if model_name in ["isolationforest", "oneclasssvm"]:
         y_pred = [1 if x == -1 else 0 for x in y_pred]
@@ -67,7 +81,12 @@ def single_local_run(train, test, model_name, random_state, columns_to_drop):
 def local_learning_pipeline():
     logging.info("Loading configuration...")
     path, _filename, config_settings = load_configuration()
-    model_name = reformatting_model_name(config_settings["model"])
+    
+    # Get model_name
+    if len(sys.argv) > 1:
+        model_name = reformatting_model_name(sys.argv[1])
+    else:
+        model_name = reformatting_model_name(config_settings["model"])
 
     if not os.path.exists(os.path.join(path["splits"], "individual_hospital_splits")):
         logging.info("Make hospital splits...")
@@ -97,6 +116,7 @@ def local_learning_pipeline():
                     train,
                     test,
                     model_name,
+                    path["results"],
                     random_state,
                     config_settings["training_columns_to_drop"],
                 )
@@ -132,7 +152,38 @@ def local_learning_pipeline():
         additional_metrics=["Hospitalid"], avg_metrics=True
     )
     save_csv(metrics_avg_df, path["results"], f"local_{model_name}_metrics_avg.csv")
+    
+    if model_name == "xgboostclassifier":
+        print("Shape of each inner list:")
+        for i, inner_list in enumerate(feature_importances_list):
+            print(f"Inner list {i + 1}: {len(inner_list)}")
+        
+        # Create average feature importances plot        
+        average_feature_importances = []
 
+        # Iterate over each column group
+        for col_group in range(np.array(feature_importances_list).shape[1]):
+            # Extract the column group and calculate its mean, ignoring NaN values
+            mean_value = np.nanmean(feature_importances_list[:, col_group])
+            average_feature_importances.append(mean_value)
+        print(average_feature_importances)
+        
+        # Sort feature importances and select top 15
+        feature_names = train.drop(columns=config_settings["training_columns_to_drop"].append("time")).columns
+        sorted_indices = np.argsort(average_feature_importances)[::-1][:15]
+        print(sorted_indices)
+        top_feature_importances = average_feature_importances[sorted_indices]
+        top_feature_names = [feature_names[i] for i in sorted_indices]
+        
+        plt.figure(figsize=(10, 6))
+        plt.bar(range(len(top_feature_importances)), top_feature_importances, tick_label=top_feature_names)
+        plt.xlabel('Features')
+        plt.ylabel('Importance')
+        plt.title('Average Feature Importances')
+        plt.xticks(rotation=90)
+        plt.tight_layout()
+        plt.savefig(os.path.join(path["results"], "average_local_xgboost_feature_importances.png"))
+        plt.show()
 
 if __name__ == "__main__":
     # Initialize the logging capability
