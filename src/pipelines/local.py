@@ -14,6 +14,7 @@ from data.saving import save_csv
 from data.processing import impute, scale
 from data.make_hospital_splits import make_hospital_splits
 from metrics.metrics import Metrics
+from metrics.metric_utils import get_y_score
 from training.preparation import get_model, reformatting_model_name
 
 # List to store feature importances from each xgb model
@@ -35,10 +36,12 @@ def single_local_run(train, test, model_name, path_to_results, random_state, col
     test = impute(test)
     
     # Add relative time column
+    '''
     train = train.sort_values(by=['stay_id', 'time'])
     train['time_relative'] = train.groupby('stay_id').cumcount()
     test = test.sort_values(by=['stay_id', 'time'])
     test['time_relative'] = test.groupby('stay_id').cumcount()
+    '''
     columns_to_drop.append("time")
 
     # Define the features and target
@@ -62,7 +65,7 @@ def single_local_run(train, test, model_name, path_to_results, random_state, col
     y_pred = model.predict(X_test)
 
     try:
-        y_score = model.predict_proba(X_test)
+        y_score = get_y_score(model.predict_proba(X_test))
     except AttributeError:
         y_score = model.decision_function(X_test)
         

@@ -142,8 +142,10 @@ def evaluate_model_on_all_clients(
             test = impute(test)
             
             # Add relative time column
+            '''
             test = test.sort_values(by=['stay_id', 'time'])
             test['time_relative'] = test.groupby('stay_id').cumcount()
+            '''
             training_columns_to_drop.append("time")
 
             # Define the features and target
@@ -155,17 +157,17 @@ def evaluate_model_on_all_clients(
 
             # Evaluate
             y_pred = eval_model.predict(X_test)
-            y_pred_proba = eval_model.decision_function(X_test)
+            y_score = eval_model.decision_function(X_test)
 
             # Invert the predictions and scores if the model is an anomaly detection model
             y_pred = [1 if x == -1 else 0 for x in y_pred]
-            y_pred_proba = y_pred_proba * -1
+            y_score = y_score * -1
 
             metrics.add_hospitalid(hospitalid)
             metrics.add_random_state(random_state)
             metrics.add_accuracy_value(y_test, y_pred)
-            metrics.add_auroc_value(y_test, y_pred_proba)
-            metrics.add_auprc_value(y_test, y_pred_proba)
+            metrics.add_auroc_value(y_test, y_score)
+            metrics.add_auprc_value(y_test, y_score)
             metrics.add_individual_confusion_matrix_values(
                 y_test, y_pred, test["stay_id"]
             )

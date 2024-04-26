@@ -27,7 +27,7 @@ def set_initial_params(model: SGDOneClassSVM) -> SGDOneClassSVM:
     But server asks for initial parameters from clients at launch. Refer to
     sklearn.linear_model.SGDOneClassSVM documentation for more information.
     """
-    n_features = 117  # Number of features in dataset
+    n_features = 192  # Number of features in dataset
     model.coef_ = np.zeros((1, n_features))
     model.offset_ = np.zeros((1,))
 

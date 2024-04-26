@@ -182,33 +182,14 @@ class Metrics:
         accuracy = accuracy_score(y_true, y_pred) * 100
         self.metrics_dict["Accuracy"]["value"].append(accuracy)
 
-    def _get_y_score(self, y_pred_proba):
-        """
-        Get the probability of the positive class (y_score).
-
-        Args:
-            y_pred_proba: Predicted probabilities
-
-        Returns:
-            np.ndarray: Probability of the positive class
-        """
-        try:
-            y_score = y_pred_proba[:, 1]
-        except IndexError:
-            # If all predictions are False(=0), no predictions are True(=1)
-            y_score = np.zeros_like(y_pred_proba)
-        return y_score
-
-    def add_auroc_value(self, y_true, y_pred_proba):
+    def add_auroc_value(self, y_true, y_score):
         """
         Add area under receiver operating characteristic curve value to metrics dictionary.
 
         Args:
             y_true: True labels
-            y_pred_proba: Predicted probabilities
+            y_score: Predicted probabilities
         """
-        y_score = self._get_y_score(y_pred_proba)
-
         # Calculate area under receiver operating characteristic curve
         try:
             if np.sum(y_true) == 0:  # If there are no positive samples in true labels
@@ -220,16 +201,14 @@ class Metrics:
 
         self.metrics_dict["AUROC"]["value"].append(auroc)
 
-    def add_auprc_value(self, y_true, y_pred_proba):
+    def add_auprc_value(self, y_true, y_score):
         """
         Add area under precision-recall curve value to metrics dictionary.
 
         Args:
             y_true: True labels
-            y_pred_proba: Predicted probabilities
+            y_score: Predicted probabilities
         """
-        y_score = self._get_y_score(y_pred_proba)
-
         # Calculate average precision
         try:
             if np.sum(y_true) == 0:  # If there are no positive samples in true labels
@@ -440,6 +419,8 @@ class Metrics:
             ]
         ]
 
+        print(f"Metric list: {metric_list}")
+
         return metric_list
 
     def _calculate_metric_stat(self, metric_list: List[float], stat_type: str):
@@ -483,18 +464,31 @@ class Metrics:
             self.metrics_dict[metric]["std"].append(metric_std)
 
     def calculate_averages_across_random_states(self):
+        mask = [
+            value > 0
+            for value in self.metrics_dict["Positive labels (TP + FN)"]["value"]
+        ]
         self.add_random_state_avg("Total Average")
-        self.add_metrics_stats(self.METRICS)
+        self.add_metrics_stats(self.METRICS, mask)
 
     def calculate_averages_per_hospitalid_across_random_states(self):
         for hospitalid in set(self.metrics_dict["Hospitalid"]["value"]):
-            mask = self.metrics_dict["Hospitalid"]["value"] == hospitalid
+            mask_1 = self.metrics_dict["Hospitalid"]["value"] == hospitalid
+            mask_2 = [
+                value > 0
+                for value in self.metrics_dict["Positive labels (TP + FN)"]["value"]
+            ]
+            mask = mask_1 & mask_2
             self.add_hospitalid_avg(hospitalid)
             self.add_metrics_stats(self.METRICS, mask)
 
     def calculate_total_averages_across_hospitalids(self):
+        mask = [
+            value > 0
+            for value in self.metrics_dict["Positive labels (TP + FN)"]["value"]
+        ]
         self.add_hospitalid_avg("Total Average")
-        self.add_metrics_stats(self.METRICS, on_mean_data=True)
+        self.add_metrics_stats(self.METRICS, mask, on_mean_data=True)
 
     def get_metrics_dataframe(
         self,

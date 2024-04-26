@@ -28,6 +28,7 @@ def preprocessing():
     # Drop all rows with missing 'label' values
     data = data.dropna(subset=["label"])
 
+    '''
     # Drop columns with missingness above threshold in any hospital
     cols_to_drop = set(
         data.columns[
@@ -36,6 +37,10 @@ def preprocessing():
             .any()
         ]
     )
+    '''
+    # Drop columns with missingness above threshold in the entire dataset
+    cols_to_drop = set(data.columns[data.isnull().mean() > config_settings["missingness_cutoff"]])
+    
     data.drop(cols_to_drop, axis=1, inplace=True)
 
     logging.debug("Save preprocessed data to parquet...")

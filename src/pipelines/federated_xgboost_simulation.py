@@ -18,6 +18,7 @@ from data.saving import save_csv
 from data.make_hospital_splits import make_hospital_splits
 from data.processing import impute, scale_X_test
 from metrics.metrics import Metrics
+from metrics.metric_utils import get_y_score
 from training.preparation import get_model
 import xgboost as xgb
 
@@ -151,8 +152,10 @@ def evaluate_model_on_all_clients(
             test = impute(test)
             
             # Add relative time column
+            '''
             test = test.sort_values(by=['stay_id', 'time'])
             test['time_relative'] = test.groupby('stay_id').cumcount()
+            '''
             training_columns_to_drop.append("time")
 
             # Define the features and target
@@ -164,13 +167,13 @@ def evaluate_model_on_all_clients(
 
             # Evaluate
             y_pred = eval_model.predict(X_test)
-            y_pred_proba = eval_model.predict_proba(X_test)
+            y_score = get_y_score(eval_model.predict_proba(X_test))
 
             metrics.add_hospitalid(hospitalid)
             metrics.add_random_state(random_state)
             metrics.add_accuracy_value(y_test, y_pred)
-            metrics.add_auroc_value(y_test, y_pred_proba)
-            metrics.add_auprc_value(y_test, y_pred_proba)
+            metrics.add_auroc_value(y_test, y_score)
+            metrics.add_auprc_value(y_test, y_score)
             metrics.add_individual_confusion_matrix_values(
                 y_test, y_pred, test["stay_id"]
             )

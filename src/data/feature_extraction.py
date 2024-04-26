@@ -1,6 +1,7 @@
 import os
 import yaml
 import sys
+import pandas as pd
 
 import recipys.recipe, recipys.ingredients, recipys.step, recipys.selector
 
@@ -59,7 +60,7 @@ def combine_cohort_data(path, filename):
     return combined_data
 
 
-def extract_features(data, columns_to_exclude, path, filename):
+def extract_features(data, columns_to_exclude):
     """
     Extract features from the cohort data and save the features as a parquet file.
 
@@ -115,7 +116,7 @@ def extract_features(data, columns_to_exclude, path, filename):
     )
     data_with_features = data_with_features[columns_to_keep]
 
-    save_parquet(data_with_features, path["features"], filename["features"])
+    return data_with_features
 
 
 def prepare_cohort_and_extract_features():
@@ -128,9 +129,31 @@ def prepare_cohort_and_extract_features():
     path, filename, config_settings = load_configuration()
     extend_cohort_data(path, filename)
     data = combine_cohort_data(path, filename)
-    extract_features(
-        data, config_settings["feature_extraction_columns_to_exclude"], path, filename
-    )
+    
+    
+    # Extract features for each group based on 'stay_id'
+    grouped_data = data.groupby('stay_id')
+
+    # List to store extracted features for each group
+    feature_dfs = []
+
+    for stay_id, group_data in grouped_data:
+        # Extract features for each group
+        features = extract_features(
+            group_data,
+            config_settings["feature_extraction_columns_to_exclude"],
+        )
+
+        # Append the extracted features to the list
+        feature_dfs.append(features)
+
+    # Concatenate the extracted features vertically
+    concatenated_features = pd.concat(feature_dfs, axis=0)
+
+    # Reset index if needed
+    concatenated_features.reset_index(drop=True, inplace=True)
+    
+    save_parquet(concatenated_features, path["features"], filename["features"])
 
 
 if __name__ == "__main__":

@@ -33,8 +33,8 @@ def set_initial_params(model: GaussianMixture) -> GaussianMixture:
     But server asks for initial parameters from clients at launch. Refer to
     sklearn.linear_model.GaussianMixture documentation for more information.
     """
-    n_features = 117  # Number of features in dataset
-    n_components = 2  # Number of components in GMM
+    n_features = 192  # Number of features in dataset
+    n_components = 4  # Number of components in GMM
 
     model.weights_ = np.zeros((n_components,))
     model.means_ = np.zeros((n_components, n_features))

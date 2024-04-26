@@ -29,8 +29,18 @@ def print_shapes():
     print(f"Original data - Static concepts shape: {static_data.shape}")
     print(f"Original data shape: {original_data.shape}")
     
+    print(dynamic_data["sbp"].describe())
+    
     print(f"Features shape: {features.shape}")
     print(f"Feature column names before: {list(features.columns)}")
+    
+    print(features["sbp_max"].describe())
+    print(features["sbp_max"].isnull().mean())
+    print(features["sbp_max"].isnull().sum())
+        
+    print(features["sbp_mean"].describe())
+    print(features["sbp_mean"].isnull().mean())
+    print(features["sbp_mean"].isnull().sum())
 
     print(f"Processed data shape: {processed_data.shape}")
     print(f"Feature column names after: {list(processed_data.columns)}")
@@ -53,7 +63,7 @@ def print_statistics():
     unique_sepsis_patients = data_sepsis["uniquepid"].nunique()
     print(f"Number of unique sepsis patients in cohort: {unique_sepsis_patients}")
     
-    missing_percentage = data.isnull().mean() * 100
+    missing_percentage = data.isna().mean() * 100
     missing_info = pd.DataFrame(
         {
             "Feature": missing_percentage.index,
@@ -61,9 +71,12 @@ def print_statistics():
         }
     )
     
-    lowest_missing = missing_info.sort_values("MissingPercentage").head(20)
-    highest_missing = missing_info.sort_values("MissingPercentage", ascending=False).head(20)
+    lowest_missing = missing_info.sort_values("MissingPercentage").head(200)
+    highest_missing = missing_info.sort_values("MissingPercentage", ascending=False).head(40)
 
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_columns', None)
+    
     print("Lowest missing values:")
     print(lowest_missing)
 

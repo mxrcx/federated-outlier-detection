@@ -49,10 +49,12 @@ class XGBClient(fl.client.Client):
         test = impute(test)
         
         # Add relative time column
+        '''
         train = train.sort_values(by=['stay_id', 'time'])
         train['time_relative'] = train.groupby('stay_id').cumcount()
         test = test.sort_values(by=['stay_id', 'time'])
         test['time_relative'] = test.groupby('stay_id').cumcount()
+        '''
         training_columns_to_drop.append("time")
 
         # Define the features and target
