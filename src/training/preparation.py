@@ -89,7 +89,7 @@ def get_model(model_name, random_state, n_jobs):
         from sklearn.ensemble import RandomForestClassifier
 
         return RandomForestClassifier(
-            n_estimators=100,
+            n_estimators=150,
             max_depth=7,
             random_state=random_state,
             n_jobs=n_jobs,
@@ -116,7 +116,7 @@ def get_model(model_name, random_state, n_jobs):
             contamination=0.01,
             max_features=0.75,
             max_samples=0.5,
-            n_estimators=50,
+            n_estimators=100,
             random_state=random_state,
             n_jobs=n_jobs,
         )
@@ -127,14 +127,14 @@ def get_model(model_name, random_state, n_jobs):
             covariance_type="full",
             init_params="random",
             max_iter=50,
-            n_components=4,
-            reg_covar=0.01,
+            n_components=2,
+            reg_covar=0.1,
             random_state=random_state,
         )
     elif model_name == "oneclasssvm":
         from sklearn.linear_model import SGDOneClassSVM
 
-        return SGDOneClassSVM(eta0=0.5, learning_rate="constant", max_iter=1000, nu=0.1)
+        return SGDOneClassSVM(eta0=0.5, learning_rate="constant", max_iter=1500, nu=0.05)
     else:
         raise ValueError(
             "Invalid model name. Specifiy a different model in the configuration file, choose from: 'randomforestclassifier', 'xgboostclassifier', 'isolationforest', 'gaussianmixture', 'oneclasssvm'"

@@ -46,17 +46,16 @@ def single_random_split_run(
     # test = impute(test)
 
     # Define the features and target
+    columns_to_drop.append("time")
     X_train = train.drop(columns=columns_to_drop)
     y_train = train["label"]
+    y_train = [-1 if x == 1 else 1 for x in y_train]
     # X_test = test.drop(columns=columns_to_drop)
     # y_test = test["label"]
 
     # Perform scaling
     # X_train, X_test = scale(X_train, X_test)
     X_train = scale_X_test(X_train)
-
-    # Invert the label for outcome
-    y_train = 1 - y_train
 
     if model_name == "isolationforest":
         model = IsolationForest(random_state=random_state, n_jobs=-1)
@@ -90,9 +89,9 @@ def single_random_split_run(
         model = GaussianMixture(random_state=random_state)
         param_grid = {
             "n_components": [1, 2, 3, 4, 8],
-            "covariance_type": ["full", "tied", "diag", "spherical"],
+            "covariance_type": ["full", "spherical"],
             "init_params": ["kmeans", "random"],
-            "max_iter": [50, 100, 150, 200],
+            "max_iter": [50, 100, 150],
             "reg_covar": [0.000001, 0.0001, 0.01, 0.1],
         }
     elif model_name == "oneclasssvm":
@@ -134,9 +133,9 @@ def single_random_split_run(
         model,
         param_grid,
         cv=5,
-        #scoring="average_precision",
+        scoring="average_precision",
         #scoring="accuracy",
-        scoring=make_scorer(average_precision_score, greater_is_better=True),
+        #scoring=make_scorer(average_precision_score, greater_is_better=True),
         n_jobs=-1,
     )
 
@@ -170,14 +169,36 @@ def grid_search_random_split():
     # logging.debug("Loading preprocessed data...")
     # data = load_parquet(path["processed"], filename["processed"], optimize_memory=True)
 
-    for random_state in range(config_settings["random_split_reps"]):
+    for random_state in range(3): #config_settings["random_split_reps"]):
         logging.info(f"Starting a single run with random_state={random_state}")
-        # hospital 58 or 67
-        data = load_parquet(
+        # hospital 63, 157, 71, 245, 443
+        data_1 = load_parquet(
             os.path.join(path["splits"], "individual_hospital_splits"),
-            f"hospital60_rstate{random_state}_train.parquet",
+            f"hospital63_rstate{random_state}_train.parquet",
             optimize_memory=True,
         )
+        data_2 = load_parquet(
+            os.path.join(path["splits"], "individual_hospital_splits"),
+            f"hospital157_rstate{random_state}_train.parquet",
+            optimize_memory=True,
+        )
+        data_3 = load_parquet(
+            os.path.join(path["splits"], "individual_hospital_splits"),
+            f"hospital71_rstate{random_state}_train.parquet",
+            optimize_memory=True,
+        )
+        data_4 = load_parquet(
+            os.path.join(path["splits"], "individual_hospital_splits"),
+            f"hospital245_rstate{random_state}_train.parquet",
+            optimize_memory=True,
+        )
+        data_5 = load_parquet(
+            os.path.join(path["splits"], "individual_hospital_splits"),
+            f"hospital443_rstate{random_state}_train.parquet",
+            optimize_memory=True,
+        )
+        
+        data = pd.concat([data_1, data_2, data_3, data_4, data_5], ignore_index=True)
 
         single_random_split_run(
             model_name,
