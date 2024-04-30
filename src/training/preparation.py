@@ -115,8 +115,8 @@ def get_model(model_name, random_state, n_jobs):
             bootstrap=True,
             contamination=0.01,
             max_features=0.75,
-            max_samples=0.5,
-            n_estimators=100,
+            max_samples=1.0,
+            n_estimators=50,
             random_state=random_state,
             n_jobs=n_jobs,
         )

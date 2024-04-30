@@ -589,6 +589,6 @@ class Metrics:
             "False Negatives": [false_negatives, false_negatives_prop],
         }
 
-        summary_df = pd.DataFrame(summary, index=[0])
+        summary_df = pd.DataFrame(summary)
 
         return summary_df
