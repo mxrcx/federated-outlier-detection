@@ -419,8 +419,6 @@ class Metrics:
             ]
         ]
 
-        print(f"Metric list: {metric_list}")
-
         return metric_list
 
     def _calculate_metric_stat(self, metric_list: List[float], stat_type: str):
@@ -464,11 +462,27 @@ class Metrics:
             self.metrics_dict[metric]["std"].append(metric_std)
 
     def calculate_averages_across_random_states(self):
-        mask = [
+        mask_1 = [
             value > 0
             for value in self.metrics_dict["Positive labels (TP + FN)"]["value"]
         ]
         self.add_random_state_avg("Total Average")
+        self.add_metrics_stats(self.METRICS, mask_1)
+
+        mask_2 = self.metrics_dict["Random State"]["value"] != "Total Average"
+        mask_3 = [
+            (
+                self.metrics_dict["Positive labels (TP + FN)"]["value"][i]
+                / (
+                    self.metrics_dict["Positive labels (TP + FN)"]["value"][i]
+                    + self.metrics_dict["Negative labels (TN + FP)"]["value"][i]
+                )
+            )
+            > 0.1
+            for i in range(len(self.metrics_dict["Positive labels (TP + FN)"]["value"]))
+        ]
+        mask = mask_1 & mask_2 & mask_3
+        self.add_random_state_avg("Total Average (>0.1 sepsis proportion)")
         self.add_metrics_stats(self.METRICS, mask)
 
     def calculate_averages_per_hospitalid_across_random_states(self):
@@ -483,12 +497,31 @@ class Metrics:
             self.add_metrics_stats(self.METRICS, mask)
 
     def calculate_total_averages_across_hospitalids(self):
-        mask = [
+        mask_1 = [
             value > 0
             for value in self.metrics_dict["Positive labels (TP + FN)"]["value"]
         ]
         self.add_hospitalid_avg("Total Average")
-        self.add_metrics_stats(self.METRICS, mask, on_mean_data=True)
+        self.add_metrics_stats(self.METRICS, mask_1, on_mean_data=True)
+
+        mask_2 = np.full(len(self.metrics_dict["Hospitalid"]["value"]), True)
+        mask_2[-1] = False
+        mask_3 = [
+            (
+                self.metrics_dict["Positive labels (TP + FN)"]["value"][i]
+                / (
+                    self.metrics_dict["Positive labels (TP + FN)"]["value"][i]
+                    + self.metrics_dict["Negative labels (TN + FP)"]["value"][i]
+                )
+            )
+            > 0.01
+            for i in range(len(self.metrics_dict["Positive labels (TP + FN)"]["value"]))
+        ]
+        print(mask_2)
+        mask_1_2 = mask_1 & mask_2
+        mask_1_2_3 = mask_1_2 & mask_3
+        self.add_hospitalid_avg("Total Average (>0.1 sepsis proportion)")
+        self.add_metrics_stats(self.METRICS, mask_1_2_3, on_mean_data=True)
 
     def get_metrics_dataframe(
         self,
@@ -528,3 +561,34 @@ class Metrics:
                     filtered_metrics_dict[key] = value["value"]
 
         return pd.DataFrame(filtered_metrics_dict)
+
+    def get_summary_dataframe(self):
+        accuracy_prop = f'{self.metrics_dict["Accuracy"]["mean"][-1]} ({self.metrics_dict["Accuracy"]["std"][-1]})'
+        auroc_prop = f'{self.metrics_dict["AUROC"]["mean"][-1]} ({self.metrics_dict["AUROC"]["std"][-1]})'
+        auprc_prop = f'{self.metrics_dict["AUPRC"]["mean"][-1]} ({self.metrics_dict["AUPRC"]["std"][-1]})'
+        positive_labels_prop = f'{self.metrics_dict["Positive labels (TP + FN)"]["mean"][-1]} ({self.metrics_dict["Stay IDs with Positive labels (TP + FN)"]["mean"][-1]})'
+        negative_labels_prop = f'{self.metrics_dict["Negative labels (TN + FP)"]["mean"][-1]} ({self.metrics_dict["Stay IDs with Negative labels (TN + FP)"]["mean"][-1]})'
+        false_positives_prop = f'{self.metrics_dict["False Positives"]["mean"][-1]} ({self.metrics_dict["Stay IDs with False Positives"]["mean"][-1]})'
+        false_negatives_prop = f'{self.metrics_dict["False Negatives"]["mean"][-1]} ({self.metrics_dict["Stay IDs with False Negatives"]["mean"][-1]})'
+
+        accuracy = f'{self.metrics_dict["Accuracy"]["mean"][-2]} ({self.metrics_dict["Accuracy"]["std"][-2]})'
+        auroc = f'{self.metrics_dict["AUROC"]["mean"][-2]} ({self.metrics_dict["AUROC"]["std"][-2]})'
+        auprc = f'{self.metrics_dict["AUPRC"]["mean"][-2]} ({self.metrics_dict["AUPRC"]["std"][-2]})'
+        positive_labels = f'{self.metrics_dict["Positive labels (TP + FN)"]["mean"][-2]} ({self.metrics_dict["Stay IDs with Positive labels (TP + FN)"]["mean"][-2]})'
+        negative_labels = f'{self.metrics_dict["Negative labels (TN + FP)"]["mean"][-2]} ({self.metrics_dict["Stay IDs with Negative labels (TN + FP)"]["mean"][-2]})'
+        false_positives = f'{self.metrics_dict["False Positives"]["mean"][-2]} ({self.metrics_dict["Stay IDs with False Positives"]["mean"][-2]})'
+        false_negatives = f'{self.metrics_dict["False Negatives"]["mean"][-2]} ({self.metrics_dict["Stay IDs with False Negatives"]["mean"][-2]})'
+
+        summary = {
+            "Accuracy": [accuracy, accuracy_prop],
+            "AUROC": [auroc, auroc_prop],
+            "AUPRC": [auprc, auprc_prop],
+            "Positive labels (TP + FN)": [positive_labels, positive_labels_prop],
+            "Negative labels (TN + FP)": [negative_labels, negative_labels_prop],
+            "False Positives": [false_positives, false_positives_prop],
+            "False Negatives": [false_negatives, false_negatives_prop],
+        }
+
+        summary_df = pd.DataFrame(summary, index=[0])
+
+        return summary_df

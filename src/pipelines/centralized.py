@@ -128,7 +128,7 @@ def leave_one_group_out_pipeline():
 
     metrics = Metrics()
 
-    for random_state in range(1): #config_settings["random_split_reps"]):
+    for random_state in range(config_settings["random_split_reps"]):
         single_cv_run(
             model_name,
             path["splits"],
@@ -152,6 +152,11 @@ def leave_one_group_out_pipeline():
     )
     save_csv(
         metrics_avg_df, path["results"], f"centralized_{model_name}_metrics_avg.csv"
+    )
+    
+    summary_results = metrics.get_summary_dataframe()
+    save_csv(
+        summary_results, os.path.join(path["results"], "summary"), f"centralized_{model_name}_summary.csv"
     )
 
 

@@ -111,12 +111,182 @@ def plot_auprc_histogram():
     # Save plot to file
     plt.savefig(os.path.join(path["results"], "auprc_plot"))
     
+def plot_sepsis_proportion_hospitals():
+    path, filename, _config_settings = load_configuration()
+    data = load_parquet(path["features"], filename["features"], optimize_memory=True)
+    
+    hospital_counts = data.groupby("hospitalid")["label"].sum()
+    hist, bins, _ = plt.hist(hospital_counts, bins=30)
+    plt.xlabel("Number of Positive Cases")
+    plt.ylabel("Number of Hospitals")
+    plt.title("Distribution of Positive Cases per Hospital")
+    plt.xticks(bins, rotation=45)
+    plt.tight_layout()
+    plt.show()
+    
+    plt.savefig(os.path.join(path["results"], "sepsis_proportion_hospitals.png"))  # Save after showing
+    
+    
+def plot_score_sampledensity():
+    path, filename, _config_settings = load_configuration()
+    results_ocsvm_local = load_csv(path["results"], "local_oneclasssvm_metrics_avg.csv")
+    results_xgboost_local = load_csv(path["results"], "local_xgboostclassifier_metrics_avg.csv")
+    
+    results_ocsvm_local = results_ocsvm_local.iloc[1:-1]
+    results_xgboost_local = results_xgboost_local.iloc[1:-1]
+    
+    # Extracting data for OCSVM
+    pos_counts_ocsvm = results_ocsvm_local["Positive labels (TP + FN) Mean"]
+    neg_counts_ocsvm = results_ocsvm_local["Negative labels (TN + FP) Mean"]
+    auprc_scores_ocsvm = results_ocsvm_local["AUPRC Mean"] 
+    auroc_scores_ocsvm = results_ocsvm_local["AUROC Mean"]
+
+    # Extracting data for XGBoost
+    pos_counts_xgboost = results_xgboost_local["Positive labels (TP + FN) Mean"]
+    neg_counts_xgboost = results_xgboost_local["Negative labels (TN + FP) Mean"]
+    auprc_scores_xgboost = results_xgboost_local["AUPRC Mean"]
+    auroc_scores_xgboost = results_xgboost_local["AUROC Mean"]
+    
+    
+    # Replace all strings or empty entries of the scores with 0
+    pos_counts_ocsvm = pos_counts_ocsvm.apply(lambda x: 0 if (isinstance(x, str) and len(x) > 6) or pd.isnull(x) else float(x))
+    neg_counts_ocsvm = neg_counts_ocsvm.apply(lambda x: 0 if (isinstance(x, str) and len(x) > 6) or pd.isnull(x)else float(x))
+    auprc_scores_ocsvm = auprc_scores_ocsvm.apply(lambda x: 0 if (isinstance(x, str) and len(x) > 6) or pd.isnull(x)else float(x))
+    auroc_scores_ocsvm = auroc_scores_ocsvm.apply(lambda x: 0 if (isinstance(x, str) and len(x) > 6) or pd.isnull(x)else float(x))
+    pos_counts_xgboost = pos_counts_xgboost.apply(lambda x: 0 if (isinstance(x, str) and len(x) > 6) or pd.isnull(x)else float(x))
+    neg_counts_xgboost = neg_counts_xgboost.apply(lambda x: 0 if (isinstance(x, str) and len(x) > 6) or pd.isnull(x)else float(x))
+    auprc_scores_xgboost = auprc_scores_xgboost.apply(lambda x: 0 if (isinstance(x, str) and len(x) > 6) or pd.isnull(x)else float(x))
+    auroc_scores_xgboost = auroc_scores_xgboost.apply(lambda x: 0 if (isinstance(x, str) and len(x) > 6) or pd.isnull(x)else float(x))
+
+    proportion_positive_ocsvm = pos_counts_ocsvm / (pos_counts_ocsvm + neg_counts_ocsvm)
+    proportion_positive_xgboost = pos_counts_xgboost / (pos_counts_xgboost + neg_counts_xgboost)
+    
+    # Plotting OCSVM
+    plt.figure(figsize=(10, 6))  # Adjust figure size
+    plt.scatter(pos_counts_ocsvm, auroc_scores_ocsvm, label="OCSVM (AUROC)", s=50, alpha=0.7, color='red')  # Increase marker size
+    plt.xlabel("Number of Positive Observations per Hospital")
+    plt.ylabel("Performance Score")
+    plt.title("OCSVM Performance: Number of Positive Observations per Hospital vs Performance Score")
+    plt.grid(True)  # Add grid lines
+    plt.legend()  # Add legend
+    plt.xticks(ticks=range(0, int(max(pos_counts_ocsvm))+1, 20), rotation=45)  # Specify ticks and rotate x-axis labels for better readability
+    plt.yticks(ticks=range(0, int(max(auroc_scores_ocsvm))+1, 10)) 
+    plt.tight_layout()  # Adjust layout to prevent overlap
+    plt.show()
+    
+    plt.savefig(os.path.join(path["results"], "ocsvm_performance_plot_auroc_number.png"))  # Save after showing
+
+    
+    plt.figure(figsize=(10, 6))  # Adjust figure size
+    plt.scatter(pos_counts_ocsvm, auprc_scores_ocsvm, label="OCSVM (AUPRC)", s=50, alpha=0.7, color='blue')  # Increase marker size
+    plt.xlabel("Number of Positive Observations per Hospital")
+    plt.ylabel("Performance Score")
+    plt.title("OCSVM Performance: Number of Positive Observations per Hospital vs Performance Score")
+    plt.grid(True)  # Add grid lines
+    plt.legend()  # Add legend
+    plt.xticks(ticks=range(0, int(max(pos_counts_ocsvm))+1, 20), rotation=45)  # Specify ticks and rotate x-axis labels for better readability
+    plt.yticks(ticks=range(0, int(max(auprc_scores_ocsvm))+1, 2)) 
+    plt.tight_layout()  # Adjust layout to prevent overlap
+    plt.show()
+    
+    plt.savefig(os.path.join(path["results"], "ocsvm_performance_plot_auprc_number.png"))  # Save after showing
+    
+    plt.figure(figsize=(10, 6))  # Adjust figure size
+    plt.scatter(proportion_positive_ocsvm, auroc_scores_ocsvm, label="OCSVM (AUROC)", s=50, alpha=0.7, color='red')  # Increase marker size
+    plt.xlabel("Proportion of Positive Observations per Hospital")
+    plt.ylabel("Performance Score")
+    plt.title("OCSVM Performance: Proportion of Positive Observations per Hospital vs Performance Score")
+    plt.grid(True)  # Add grid lines
+    plt.legend()  # Add legend
+    plt.xlim(0, 0.3)  # Set x-axis limits to create a gap
+    plt.xticks(rotation=45)  # Specify ticks and rotate x-axis labels for better readability
+    plt.yticks(ticks=range(0, int(max(auroc_scores_ocsvm))+1, 10)) 
+    plt.tight_layout()  # Adjust layout to prevent overlap
+    plt.show()
+
+    plt.savefig(os.path.join(path["results"], "ocsvm_performance_plot_auroc_proportion.png"))  # Save after showing
+    
+    plt.figure(figsize=(10, 6))  # Adjust figure size
+    plt.scatter(proportion_positive_ocsvm, auprc_scores_ocsvm, label="OCSVM (AUPRC)", s=50, alpha=0.7, color='blue')  # Increase marker size
+    plt.xlabel("Proportion of Positive Observations per Hospital")
+    plt.ylabel("Performance Score")
+    plt.title("OCSVM Performance: Proportion of Positive Observations per Hospital vs Performance Score")
+    plt.grid(True)  # Add grid lines
+    plt.legend()  # Add legend
+    plt.xlim(0, 0.3)  # Set x-axis limits to create a gap
+    plt.xticks(rotation=45)  # Specify ticks and rotate x-axis labels for better readability
+    plt.yticks(ticks=range(0, int(max(auprc_scores_ocsvm))+1, 2)) 
+    plt.tight_layout()  # Adjust layout to prevent overlap
+    plt.show()
+
+    plt.savefig(os.path.join(path["results"], "ocsvm_performance_plot_auprc_proportion.png"))  # Save after showing
+
+    # Plotting XGBoost
+    plt.figure(figsize=(10, 6))  # Adjust figure size
+    plt.scatter(pos_counts_xgboost, auroc_scores_xgboost, label="XGBoost (AUROC)", s=50, alpha=0.7, color='red')  # Increase marker size
+    plt.xlabel("Number of Positive Observations per Hospital")
+    plt.ylabel("Performance Score")
+    plt.title("XGBoost Performance: Number of Positive Observations per Hospital vs Performance Score")
+    plt.grid(True)  # Add grid lines
+    plt.legend()  # Add legend
+    plt.xticks(ticks=range(0, int(max(pos_counts_xgboost))+1, 20), rotation=45)  # Specify ticks and rotate x-axis labels for better readability
+    plt.yticks(ticks=range(0, int(max(auroc_scores_xgboost))+1, 10)) 
+    plt.tight_layout()  # Adjust layout to prevent overlap
+    plt.show()
+    
+    plt.savefig(os.path.join(path["results"], "xgboost_performance_plot_auroc_number.png"))  # Save after showing
+    
+    plt.figure(figsize=(10, 6))  # Adjust figure size
+    plt.scatter(pos_counts_xgboost, auprc_scores_xgboost, label="XGBoost (AUPRC)", s=50, alpha=0.7, color='blue')  # Increase marker size
+    plt.xlabel("Number of Positive Observations per Hospital")
+    plt.ylabel("Performance Score")
+    plt.title("XGBoost Performance: Number of Positive Observations per Hospital vs Performance Score")
+    plt.grid(True)  # Add grid lines
+    plt.legend()  # Add legend
+    plt.xticks(ticks=range(0, int(max(pos_counts_xgboost))+1, 20), rotation=45)  # Specify ticks and rotate x-axis labels for better readability
+    plt.yticks(ticks=range(0, int(max(auprc_scores_xgboost))+1, 2)) 
+    plt.tight_layout()  # Adjust layout to prevent overlap
+    plt.show()
+    
+    plt.savefig(os.path.join(path["results"], "xgboost_performance_plot_auprc_number.png"))  # Save after showing
+    
+    plt.figure(figsize=(10, 6))  # Adjust figure size
+    plt.scatter(proportion_positive_xgboost, auroc_scores_xgboost, label="XGBoost (AUROC)", s=50, alpha=0.7, color='red')  # Increase marker size
+    plt.xlabel("Proportion of Positive Observations per Hospital")
+    plt.ylabel("Performance Score")
+    plt.title("XGBoost Performance: Proportion of Positive Observations per Hospital vs Performance Score")
+    plt.grid(True)  # Add grid lines
+    plt.legend()  # Add legend
+    plt.xlim(0, 0.3)  # Set x-axis limits to create a gap
+    plt.xticks(rotation=45)  # Specify ticks and rotate x-axis labels for better readability
+    plt.yticks(ticks=range(0, int(max(auroc_scores_xgboost))+1, 10)) 
+    plt.tight_layout()  # Adjust layout to prevent overlap
+    plt.show()
+
+    plt.savefig(os.path.join(path["results"], "xgboost_performance_plot_auroc_proportion.png"))  # Save after showing
+    
+    plt.figure(figsize=(10, 6))  # Adjust figure size
+    plt.scatter(proportion_positive_xgboost, auprc_scores_xgboost, label="XGBoost (AUPRC)", s=50, alpha=0.7, color='blue')  # Increase marker size
+    plt.xlabel("Proportion of Positive Observations per Hospital")
+    plt.ylabel("Performance Score")
+    plt.title("XGBoost Performance: Proportion of Positive Observations per Hospital vs Performance Score")
+    plt.grid(True)  # Add grid lines
+    plt.legend()  # Add legend
+    plt.xlim(0, 0.3)  # Set x-axis limits to create a gap
+    plt.xticks(rotation=45)  # Specify ticks and rotate x-axis labels for better readability
+    plt.yticks(ticks=range(0, int(max(auprc_scores_xgboost))+1, 2)) 
+    plt.tight_layout()  # Adjust layout to prevent overlap
+    plt.show()
+
+    plt.savefig(os.path.join(path["results"], "xgboost_performance_plot_auprc_proportion.png"))  # Save after showing
 
 
 def run_test():
-    print_shapes()
+    # print_shapes()
     # plot_auprc_histogram()
-    print_statistics()
+    # print_statistics()
+    # plot_score_sampledensity()
+    plot_sepsis_proportion_hospitals()
 
 
 if __name__ == "__main__":

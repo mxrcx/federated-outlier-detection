@@ -228,6 +228,11 @@ def run_federated_gmm_simulation():
     save_csv(
         metrics_avg_df, path["results"], "federated_gaussianmixture_metrics_avg.csv"
     )
+    
+    summary_results = metrics.get_summary_dataframe()
+    save_csv(
+        summary_results, os.path.join(path["results"], "summary"), f"federated_gaussianmixture_summary.csv"
+    )
 
 
 if __name__ == "__main__":

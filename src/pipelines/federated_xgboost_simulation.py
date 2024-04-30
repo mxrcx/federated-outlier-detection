@@ -231,6 +231,11 @@ def run_federated_xgboost_simulation():
         additional_metrics=["Hospitalid"], avg_metrics=True
     )
     save_csv(metrics_avg_df, path["results"], "federated_xgboostclassifier_metrics_avg.csv")
+    
+    summary_results = metrics.get_summary_dataframe()
+    save_csv(
+        summary_results, os.path.join(path["results"], "summary"), f"federated_xgboostclassifier_summary.csv"
+    )
 
 
 if __name__ == "__main__":

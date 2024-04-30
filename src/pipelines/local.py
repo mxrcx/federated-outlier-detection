@@ -156,6 +156,11 @@ def local_learning_pipeline():
     )
     save_csv(metrics_avg_df, path["results"], f"local_{model_name}_metrics_avg.csv")
     
+    summary_results = metrics.get_summary_dataframe()
+    save_csv(
+        summary_results, os.path.join(path["results"], "summary"), f"local_{model_name}_summary.csv"
+    )
+    
     if model_name == "xgboostclassifier":
         print("Shape of each inner list:")
         for i, inner_list in enumerate(feature_importances_list):

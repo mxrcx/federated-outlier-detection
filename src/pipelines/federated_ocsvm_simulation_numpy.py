@@ -224,6 +224,11 @@ def run_federated_ocsvm_simulation():
         additional_metrics=["Hospitalid"], avg_metrics=True
     )
     save_csv(metrics_avg_df, path["results"], "federated_oneclasssvm_metrics_avg.csv")
+    
+    summary_results = metrics.get_summary_dataframe()
+    save_csv(
+        summary_results, os.path.join(path["results"], "summary"), f"federated_oneclasssvm_summary.csv"
+    )
 
 
 if __name__ == "__main__":

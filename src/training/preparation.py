@@ -89,8 +89,8 @@ def get_model(model_name, random_state, n_jobs):
         from sklearn.ensemble import RandomForestClassifier
 
         return RandomForestClassifier(
-            n_estimators=150,
-            max_depth=7,
+            n_estimators=150, # 150
+            max_depth=15,
             random_state=random_state,
             n_jobs=n_jobs,
         )
@@ -99,12 +99,12 @@ def get_model(model_name, random_state, n_jobs):
         
         return xgb.XGBClassifier(
             eval_metric="aucpr",
-            learning_rate=0.5,
-            max_depth=6,
-            num_parallel_tree=1,
+            learning_rate=0.3,
+            max_depth=10,
+            num_parallel_tree=3,
             subsample=0.5,
             colsample_bytree=1,
-            reg_lambda=0.5,
+            reg_lambda=1,
             objective="binary:logistic",
             tree_method="hist",
         )
@@ -126,7 +126,7 @@ def get_model(model_name, random_state, n_jobs):
         return GaussianMixture(
             covariance_type="full",
             init_params="random",
-            max_iter=50,
+            max_iter=75,
             n_components=2,
             reg_covar=0.1,
             random_state=random_state,
@@ -134,7 +134,7 @@ def get_model(model_name, random_state, n_jobs):
     elif model_name == "oneclasssvm":
         from sklearn.linear_model import SGDOneClassSVM
 
-        return SGDOneClassSVM(eta0=0.5, learning_rate="constant", max_iter=1500, nu=0.05)
+        return SGDOneClassSVM(eta0=0.3, learning_rate="constant", max_iter=1500, nu=0.25)
     else:
         raise ValueError(
             "Invalid model name. Specifiy a different model in the configuration file, choose from: 'randomforestclassifier', 'xgboostclassifier', 'isolationforest', 'gaussianmixture', 'oneclasssvm'"

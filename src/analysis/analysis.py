@@ -128,8 +128,8 @@ def create_average_diff(combined_df):
     Returns:
         pd.DataFrame: Average difference dataframe
     """
-    # Exclude the last row with total values
-    combined_df_except_last_row = combined_df.iloc[:-1]
+    # Exclude the last two rows with total values
+    combined_df_pruned = combined_df.iloc[:-2]
 
     average_diff_colnames = [
         "Accuracy",
@@ -146,12 +146,12 @@ def create_average_diff(combined_df):
     for colname in average_diff_colnames:
         for comparison_suffix in comparison_suffixes:
             average_diff_data[f"{colname} Difference {comparison_suffix} Mean"] = [
-                combined_df_except_last_row[
+                combined_df_pruned[
                     f"{colname} Difference {comparison_suffix}"
                 ].mean()
             ]
             average_diff_data[f"{colname} Difference {comparison_suffix}  Std"] = [
-                combined_df_except_last_row[
+                combined_df_pruned[
                     f"{colname} Difference {comparison_suffix}"
                 ].std()
             ]
