@@ -72,7 +72,7 @@ def single_run(
             "n_components": [1, 2, 3, 4, 8],
             "covariance_type": ["full", "spherical"],
             "init_params": ["kmeans", "random"],
-            "max_iter": [50, 100, 150],
+            "max_iter": [50, 75, 100, 150],
             "reg_covar": [0.000001, 0.0001, 0.01, 0.1],
         }
     elif model_name == "oneclasssvm":

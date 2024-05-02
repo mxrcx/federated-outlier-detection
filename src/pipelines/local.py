@@ -18,7 +18,7 @@ from metrics.metric_utils import get_y_score
 from training.preparation import get_model, reformatting_model_name
 
 # List to store feature importances from each xgb model
-feature_importances_list = []
+feature_importances = []
 
 @ray.remote(num_cpus=2)
 def single_local_run(train, test, model_name, path_to_results, random_state, columns_to_drop):
@@ -35,14 +35,11 @@ def single_local_run(train, test, model_name, path_to_results, random_state, col
     train = impute(train)
     test = impute(test)
     
-    # Add relative time column
-    '''
-    train = train.sort_values(by=['stay_id', 'time'])
-    train['time_relative'] = train.groupby('stay_id').cumcount()
-    test = test.sort_values(by=['stay_id', 'time'])
-    test['time_relative'] = test.groupby('stay_id').cumcount()
-    '''
     columns_to_drop.append("time")
+    
+    # For OCSVM: Remove the observations with sepsis label from training set
+    if model_name == "oneclasssvm":
+        train = train[train["label"] == 0]
 
     # Define the features and target
     X_train = train.drop(columns=columns_to_drop)
@@ -70,8 +67,11 @@ def single_local_run(train, test, model_name, path_to_results, random_state, col
         y_score = model.decision_function(X_test)
         
     # Add feature importances of current xgb model to list
-    if model_name == "xgboostclassifier":
-        feature_importances_list.append(model.feature_importances_)
+    if model_name == "xgboostclassifier" and random_state == 0:
+        intermediate_importances = xgb.get_score(importance_type="weight")
+        intermediate_feature_importance_df = pd.DataFrame({'Feature': list(intermediate_importances.keys()), 'Importance': list(intermediate_importances.values())})
+        intermediate_feature_importance_df = intermediate_feature_importance_df.sort_values(by='Importance', ascending=False)
+        feature_importances.append(intermediate_feature_importance_df["Feature"].to_list())
             
     # Invert the outcome label
     if model_name in ["isolationforest", "oneclasssvm"]:
@@ -161,37 +161,27 @@ def local_learning_pipeline():
         summary_results, os.path.join(path["results"], "summary"), f"local_{model_name}_summary.csv"
     )
     
-    if model_name == "xgboostclassifier":
-        print("Shape of each inner list:")
-        for i, inner_list in enumerate(feature_importances_list):
-            print(f"Inner list {i + 1}: {len(inner_list)}")
-        
-        # Create average feature importances plot        
-        average_feature_importances = []
+    # Create feature importance plot
+    if model_name == "xgboostclassifier" and random_state == 0:
+        feature_ranks = {}
+        for inner_list in feature_importances:
+            for i, feature in enumerate(inner_list):
+                if feature not in feature_ranks:
+                    feature_ranks[feature] = []
+                feature_ranks[feature].append(i + 1)  # Adjusting index to start from 1
 
-        # Iterate over each column group
-        for col_group in range(np.array(feature_importances_list).shape[1]):
-            # Extract the column group and calculate its mean, ignoring NaN values
-            mean_value = np.nanmean(feature_importances_list[:, col_group])
-            average_feature_importances.append(mean_value)
-        print(average_feature_importances)
-        
-        # Sort feature importances and select top 15
-        feature_names = train.drop(columns=config_settings["training_columns_to_drop"].append("time")).columns
-        sorted_indices = np.argsort(average_feature_importances)[::-1][:15]
-        print(sorted_indices)
-        top_feature_importances = average_feature_importances[sorted_indices]
-        top_feature_names = [feature_names[i] for i in sorted_indices]
+        # Calculate average rank for each feature
+        average_ranks = {feature: sum(ranks) / len(ranks) for feature, ranks in feature_ranks.items()}
+        feature_importance_df = pd.DataFrame(list(average_ranks.items()), columns=['Feature', 'Rank'])
         
         plt.figure(figsize=(10, 6))
-        plt.bar(range(len(top_feature_importances)), top_feature_importances, tick_label=top_feature_names)
-        plt.xlabel('Features')
-        plt.ylabel('Importance')
-        plt.title('Average Feature Importances')
-        plt.xticks(rotation=90)
+        plt.barh(feature_importance_df['Feature'], feature_importance_df['Rank'], color='skyblue')
+        plt.xlabel('Rank')
+        plt.ylabel('Feature')
+        plt.title('Local XGBoost - Feature Importance by Rank')
         plt.tight_layout()
-        plt.savefig(os.path.join(path["results"], "average_local_xgboost_feature_importances.png"))
         plt.show()
+        plt.savefig(os.path.join(path["results"], "local_xgboost_feature_importance.png"))
 
 if __name__ == "__main__":
     # Initialize the logging capability

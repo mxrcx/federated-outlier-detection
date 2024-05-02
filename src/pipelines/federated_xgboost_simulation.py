@@ -7,6 +7,8 @@ sys.path.append("..")
 
 from logging import INFO
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
 import flwr as fl
 from flwr.common.logger import log
@@ -136,9 +138,23 @@ def evaluate_model_on_all_clients(
         eval_model.load_model(global_model)
         
         # Create feature importance plot
-        ax = xgb.plot_importance(eval_model, max_num_features=15)
-        ax.figure.tight_layout()
-        ax.figure.savefig(os.path.join(path_to_results, "federated_xgboost_feature_importance.png"))
+        if random_state == 0:
+            #ax = xgb.plot_importance(eval_model, max_num_features=15)
+            #ax.figure.tight_layout()
+            #ax.figure.savefig(os.path.join(path_to_results, "federated_xgboost_feature_importance.png"))
+            importances = xgb.get_score(importance_type="weight")
+            feature_importance_df = pd.DataFrame({'Feature': list(importances.keys()), 'Importance': list(importances.values())})
+            feature_importance_df = feature_importance_df.sort_values(by='Importance', ascending=False)
+            feature_importance_df['Rank'] = range(1, len(feature_importance_df) + 1)
+            
+            plt.figure(figsize=(10, 6))
+            plt.barh(feature_importance_df['Feature'], feature_importance_df['Rank'], color='skyblue')
+            plt.xlabel('Rank')
+            plt.ylabel('Feature')
+            plt.title('Federated XGBoost - Feature Importance by Rank')
+            plt.tight_layout()
+            plt.show()
+            plt.savefig(os.path.join(path_to_results, "federated_xgboost_feature_importance.png"))
             
         logging.info("Evaluate model on all clients...")
         for hospitalid in hospitalids:
@@ -151,11 +167,6 @@ def evaluate_model_on_all_clients(
             # Perform imputation
             test = impute(test)
             
-            # Add relative time column
-            '''
-            test = test.sort_values(by=['stay_id', 'time'])
-            test['time_relative'] = test.groupby('stay_id').cumcount()
-            '''
             training_columns_to_drop.append("time")
 
             # Define the features and target

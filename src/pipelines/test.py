@@ -126,6 +126,22 @@ def plot_sepsis_proportion_hospitals():
     
     plt.savefig(os.path.join(path["results"], "sepsis_proportion_hospitals.png"))  # Save after showing
     
+def test_difference_pos_label():
+    path, filename, _config_settings = load_configuration()
+    results_xgboost_centralized = load_csv(path["results"], "centralized_xgboostclassifier_metrics_avg.csv")
+    results_xgboost_local = load_csv(path["results"], "local_xgboostclassifier_metrics_avg.csv")
+    results_xgboost_federated = load_csv(path["results"], "federated_xgboostclassifier_metrics_avg.csv")
+    
+    # Calculate the differences in the "Positive labels (TP + FN) Mean" column
+    diff_centralized = results_xgboost_centralized["Positive labels (TP + FN) Mean"] - results_xgboost_local["Positive labels (TP + FN) Mean"]
+    diff_federated = results_xgboost_federated["Positive labels (TP + FN) Mean"] - results_xgboost_local["Positive labels (TP + FN) Mean"]
+
+    # Print the differences
+    print("Differences in PosLabels (Centralized - Local):")
+    print(diff_centralized)
+    print("Differences in PosLabels (Federated - Local):")
+    print(diff_federated)
+    
     
 def plot_score_sampledensity():
     path, filename, _config_settings = load_configuration()
@@ -286,7 +302,8 @@ def run_test():
     # plot_auprc_histogram()
     # print_statistics()
     # plot_score_sampledensity()
-    plot_sepsis_proportion_hospitals()
+    # plot_sepsis_proportion_hospitals()
+    test_difference_pos_label
 
 
 if __name__ == "__main__":

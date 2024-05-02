@@ -29,14 +29,10 @@ class OCSVMClient(fl.client.NumPyClient):
         train = impute(train)
         test = impute(test)
         
-        # Add relative time column
-        '''
-        train = train.sort_values(by=['stay_id', 'time'])
-        train['time_relative'] = train.groupby('stay_id').cumcount()
-        test = test.sort_values(by=['stay_id', 'time'])
-        test['time_relative'] = test.groupby('stay_id').cumcount()
-        '''
         training_columns_to_drop.append("time")
+        
+        # For OCSVM: Remove the observations with sepsis label from training set
+        train = train[train["label"] == 0]
 
         # Define the features and target
         X_train = train.drop(columns=training_columns_to_drop)

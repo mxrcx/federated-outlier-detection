@@ -134,7 +134,7 @@ def get_model(model_name, random_state, n_jobs):
     elif model_name == "oneclasssvm":
         from sklearn.linear_model import SGDOneClassSVM
 
-        return SGDOneClassSVM(eta0=0.3, learning_rate="constant", max_iter=1500, nu=0.25)
+        return SGDOneClassSVM(eta0=0.3, learning_rate="constant", max_iter=1000, nu=0.11)
     else:
         raise ValueError(
             "Invalid model name. Specifiy a different model in the configuration file, choose from: 'randomforestclassifier', 'xgboostclassifier', 'isolationforest', 'gaussianmixture', 'oneclasssvm'"

@@ -4,6 +4,7 @@ import sys
 import shap
 import matplotlib.pyplot as plt
 import xgboost as xgb
+import pandas as pd
 
 sys.path.append("..")
 from data.loading import load_parquet, load_configuration
@@ -14,6 +15,7 @@ from metrics.metrics import Metrics
 from metrics.metric_utils import get_y_score
 from training.preparation import get_model, reformatting_model_name
 
+feature_importances = []
 
 def single_cv_run(
     model_name,
@@ -56,14 +58,11 @@ def single_cv_run(
         train = impute(train)
         test = impute(test)
         
-        # Add relative time column
-        '''
-        train = train.sort_values(by=['stay_id', 'time'])
-        train['time_relative'] = train.groupby('stay_id').cumcount()
-        test = test.sort_values(by=['stay_id', 'time'])
-        test['time_relative'] = test.groupby('stay_id').cumcount()
-        '''
         columns_to_drop.append("time")
+        
+        # For OCSVM: Remove the observations with sepsis label from training set
+        if model_name == "oneclasssvm":
+            train = train[train["label"] == 0]
 
         # Define the features and target
         X_train = train.drop(columns=columns_to_drop)
@@ -83,12 +82,6 @@ def single_cv_run(
             y_score = get_y_score(model.predict_proba(X_test))
         except AttributeError:
             y_score = model.decision_function(X_test)
-        
-        # Create feature importance plot
-        if model_name == "xgboostclassifier":
-            ax = xgb.plot_importance(model, max_num_features=15)
-            ax.figure.tight_layout()
-            ax.figure.savefig(os.path.join(path_to_results, "centralized_xgboost_feature_importance.png"))
 
         # Add metrics to the metrics object for each hospital
         for hospitalid in test["hospitalid"].unique():
@@ -110,6 +103,39 @@ def single_cv_run(
             metrics.add_individual_confusion_matrix_values(
                 y_test_hospital, y_pred_hospital, test["stay_id"][mask]
             )
+        
+        # Add feature importances of current xgb model to list
+        if model_name == "xgboostclassifier" and random_state == 0:
+            intermediate_importances = xgb.get_score(importance_type="weight")
+            intermediate_feature_importance_df = pd.DataFrame({'Feature': list(intermediate_importances.keys()), 'Importance': list(intermediate_importances.values())})
+            intermediate_feature_importance_df = intermediate_feature_importance_df.sort_values(by='Importance', ascending=False)
+            feature_importances.append(intermediate_feature_importance_df["Feature"].to_list())
+    
+    # Create feature importance plot
+    if model_name == "xgboostclassifier" and random_state == 0:
+        feature_ranks = {}
+        for inner_list in feature_importances:
+            for i, feature in enumerate(inner_list):
+                if feature not in feature_ranks:
+                    feature_ranks[feature] = []
+                feature_ranks[feature].append(i + 1)  # Adjusting index to start from 1
+
+        # Calculate average rank for each feature
+        average_ranks = {feature: sum(ranks) / len(ranks) for feature, ranks in feature_ranks.items()}
+        feature_importance_df = pd.DataFrame(list(average_ranks.items()), columns=['Feature', 'Rank'])
+        
+        plt.figure(figsize=(10, 6))
+        plt.barh(feature_importance_df['Feature'], feature_importance_df['Rank'], color='skyblue')
+        plt.xlabel('Rank')
+        plt.ylabel('Feature')
+        plt.title('Centralized XGBoost - Feature Importance by Rank')
+        plt.tight_layout()
+        plt.show()
+        plt.savefig(os.path.join(path_to_results, "centralized_xgboost_feature_importance.png"))
+
+        #ax = xgb.plot_importance(model, max_num_features=15)
+        #ax.figure.tight_layout()
+        #ax.figure.savefig(os.path.join(path_to_results, "centralized_xgboost_feature_importance.png"))
 
 
 def leave_one_group_out_pipeline():
