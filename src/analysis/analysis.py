@@ -1,6 +1,9 @@
 import pandas as pd
 import numpy as np
 import sys
+
+sys.path.append("..")
+
 import re
 from data.loading import load_csv, load_configuration
 from data.saving import save_csv
