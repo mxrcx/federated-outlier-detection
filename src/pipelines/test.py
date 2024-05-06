@@ -1,12 +1,19 @@
+import sys
+
+sys.path.append("..")
+
 from data.loading import load_configuration, load_parquet, load_csv
 from data.processing import reformat_time_column, encode_categorical_columns
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import os
 import pandas as pd
+import numpy as np
 
 
 def print_shapes():
     path, filename, config_settings = load_configuration()
+    """
     dynamic_data = load_parquet(
         path["cohorts"], filename["dynamic_data"], optimize_memory=True
     )
@@ -16,6 +23,7 @@ def print_shapes():
     original_data = load_parquet(
         path["interim"], filename["combined"], optimize_memory=True
     )
+    """
     features = load_parquet(
         path["features"], filename["features"], optimize_memory=True
     )
@@ -25,11 +33,13 @@ def print_shapes():
         path["processed"], filename["processed"], optimize_memory=True
     )
 
+    """
     print(f"Original data - Dynamic concepts shape: {dynamic_data.shape}")
     print(f"Original data - Static concepts shape: {static_data.shape}")
     print(f"Original data shape: {original_data.shape}")
     
     print(dynamic_data["sbp"].describe())
+    """
     
     print(f"Features shape: {features.shape}")
     print(f"Feature column names before: {list(features.columns)}")
@@ -116,15 +126,31 @@ def plot_sepsis_proportion_hospitals():
     data = load_parquet(path["features"], filename["features"], optimize_memory=True)
     
     hospital_counts = data.groupby("hospitalid")["label"].sum()
-    hist, bins, _ = plt.hist(hospital_counts, bins=30)
-    plt.xlabel("Number of Positive Cases")
+    hospitals_with_only_label_0 = hospital_counts[hospital_counts == 0]
+    print(f"Number of unique hospitals with only label 0: {len(hospitals_with_only_label_0)}")
+    
+    hist, bins, _ = plt.hist(hospital_counts, bins=25)
+    plt.xlabel("Number of Sepsis Observations")
     plt.ylabel("Number of Hospitals")
-    plt.title("Distribution of Positive Cases per Hospital")
+    plt.title("Distribution of Sepsis Observations per Hospital")
+    plt.gca().xaxis.set_major_formatter(ticker.StrMethodFormatter("{x:,.0f}"))
     plt.xticks(bins, rotation=45)
     plt.tight_layout()
     plt.show()
     
     plt.savefig(os.path.join(path["results"], "sepsis_proportion_hospitals.png"))  # Save after showing
+    
+    total_cases_per_hospital = data.groupby("hospitalid")["label"].count()
+    hist, bins, _ = plt.hist(total_cases_per_hospital, bins=25)
+    plt.xlabel("Number of all Observations")
+    plt.ylabel("Number of Hospitals")
+    plt.title("Distribution of all Observations per Hospital")
+    plt.gca().xaxis.set_major_formatter(ticker.StrMethodFormatter("{x:,.0f}"))
+    plt.xticks(bins, rotation=45)
+    plt.tight_layout()
+    plt.show()
+    
+    plt.savefig(os.path.join(path["results"], "total_cases_hospitals.png"))  # Save after showing
     
 def test_difference_pos_label():
     path, filename, _config_settings = load_configuration()
@@ -298,12 +324,12 @@ def plot_score_sampledensity():
 
 
 def run_test():
-    # print_shapes()
+    print_shapes()
     # plot_auprc_histogram()
-    # print_statistics()
+    print_statistics()
     # plot_score_sampledensity()
     # plot_sepsis_proportion_hospitals()
-    test_difference_pos_label
+    # test_difference_pos_label()
 
 
 if __name__ == "__main__":
