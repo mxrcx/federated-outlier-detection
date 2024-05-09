@@ -3,9 +3,12 @@
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=marco.schaarschmidt@student.hpi.de
 #SBATCH --partition=cpu # -p
-#SBATCH --cpus-per-task=42 # -c
-#SBATCH --mem=800gb
+#SBATCH --cpus-per-task=22 # -c
+#SBATCH --mem=84gb
 #SBATCH --time=48:00:00 # 48 hours
 #SBATCH --output=logs/job_%j.log # %j is job id
 
-conda run -n fedout-det python3 local.py
+# Get the command-line argument
+arg="$1"
+
+conda run -n fedout-det python3 local.py "$arg"

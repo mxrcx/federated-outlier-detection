@@ -1,5 +1,9 @@
 import pandas as pd
 import numpy as np
+import sys
+
+sys.path.append("..")
+
 import re
 from data.loading import load_csv, load_configuration
 from data.saving import save_csv
@@ -127,21 +131,17 @@ def create_average_diff(combined_df):
     Returns:
         pd.DataFrame: Average difference dataframe
     """
-    # Exclude the last row with total values
-    combined_df_except_last_row = combined_df.iloc[:-1]
+    # Exclude the last two rows with total values
+    combined_df_pruned = combined_df.iloc[:-2]
 
     average_diff_colnames = [
         "Accuracy",
         "AUROC",
         "AUPRC",
-        "TN",
-        "TN Stay IDs",
         "FP",
         "FP Stay IDs",
         "FN",
         "FN Stay IDs",
-        "TP",
-        "TP Stay IDs",
     ]
     average_diff_data = {}
     comparison_suffixes = ["LOGO-Local", "LOGO-Fed", "Local-Fed"]
@@ -149,12 +149,12 @@ def create_average_diff(combined_df):
     for colname in average_diff_colnames:
         for comparison_suffix in comparison_suffixes:
             average_diff_data[f"{colname} Difference {comparison_suffix} Mean"] = [
-                combined_df_except_last_row[
+                combined_df_pruned[
                     f"{colname} Difference {comparison_suffix}"
                 ].mean()
             ]
             average_diff_data[f"{colname} Difference {comparison_suffix}  Std"] = [
-                combined_df_except_last_row[
+                combined_df_pruned[
                     f"{colname} Difference {comparison_suffix}"
                 ].std()
             ]
@@ -204,7 +204,12 @@ def convert_cm_columns(df):
 
 def analysis():
     _path, _filename, config_settings = load_configuration()
-    model_name = reformatting_model_name(config_settings["model"])
+    
+    # Get model_name
+    if len(sys.argv) > 1:
+        model_name = reformatting_model_name(sys.argv[1])
+    else:
+        model_name = reformatting_model_name(config_settings["model"])
 
     # Step 1 - Load data
     results_centralized_avg, results_local_avg, results_federated_avg = load_csv_files(

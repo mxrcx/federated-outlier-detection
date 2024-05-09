@@ -28,6 +28,11 @@ class OCSVMClient(fl.client.NumPyClient):
         # Perform imputation
         train = impute(train)
         test = impute(test)
+        
+        training_columns_to_drop.append("time")
+        
+        # For OCSVM: Remove the observations with sepsis label from training set
+        train = train[train["label"] == 0]
 
         # Define the features and target
         X_train = train.drop(columns=training_columns_to_drop)

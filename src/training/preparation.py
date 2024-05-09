@@ -89,20 +89,20 @@ def get_model(model_name, random_state, n_jobs):
         from sklearn.ensemble import RandomForestClassifier
 
         return RandomForestClassifier(
-            n_estimators=100,
-            max_depth=7,
+            n_estimators=150, # 150
+            max_depth=15,
             random_state=random_state,
             n_jobs=n_jobs,
         )
     elif model_name == "xgboostclassifier":
         import xgboost as xgb
-
+        
         return xgb.XGBClassifier(
             eval_metric="aucpr",
-            learning_rate=0.1,
-            max_depth=8,
-            num_parallel_tree=1,
-            subsample=1,
+            learning_rate=0.3,
+            max_depth=10,
+            num_parallel_tree=3,
+            subsample=0.5,
             colsample_bytree=1,
             reg_lambda=1,
             objective="binary:logistic",
@@ -111,15 +111,33 @@ def get_model(model_name, random_state, n_jobs):
     elif model_name == "isolationforest":
         from sklearn.ensemble import IsolationForest
 
-        return IsolationForest(random_state=random_state, n_jobs=n_jobs)
+        return IsolationForest(
+            bootstrap=True,
+            contamination=0.01,
+            max_features=0.75,
+            max_samples=1.0,
+            n_estimators=50,
+            random_state=random_state,
+            n_jobs=n_jobs,
+        )
     elif model_name == "gaussianmixture":
         from sklearn.mixture import GaussianMixture
 
-        return GaussianMixture(n_components=1, random_state=random_state)
+        return GaussianMixture(random_state=random_state)
+        """
+        return GaussianMixture(
+            covariance_type="full",
+            init_params="random",
+            max_iter=75,
+            n_components=2,
+            reg_covar=0.1,
+            random_state=random_state,
+        )
+        """
     elif model_name == "oneclasssvm":
-        from sklearn.svm import OneClassSVM
+        from sklearn.linear_model import SGDOneClassSVM
 
-        return OneClassSVM(kernel="linear", nu=0.01)
+        return SGDOneClassSVM(eta0=0.3, learning_rate="constant", max_iter=1000, nu=0.1)
     else:
         raise ValueError(
             "Invalid model name. Specifiy a different model in the configuration file, choose from: 'randomforestclassifier', 'xgboostclassifier', 'isolationforest', 'gaussianmixture', 'oneclasssvm'"
