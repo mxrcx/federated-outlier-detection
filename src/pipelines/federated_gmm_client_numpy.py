@@ -30,6 +30,8 @@ class GMMClient(fl.client.NumPyClient):
         # Perform imputation
         train = impute(train)
         test = impute(test)
+        
+        training_columns_to_drop.append("time")
 
         # Define the features and target
         X_train = train.drop(columns=training_columns_to_drop)

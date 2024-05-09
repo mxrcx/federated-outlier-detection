@@ -18,7 +18,8 @@ from data.saving import save_csv
 from data.make_hospital_splits import make_hospital_splits
 from data.processing import impute, scale_X_test
 from metrics.metrics import Metrics
-from sklearn.mixture import GaussianMixture
+from metrics.metric_utils import get_y_score
+from training.preparation import get_model
 
 # FL experimental settings
 NUM_CLIENTS = 131  # 131
@@ -126,7 +127,7 @@ def evaluate_model_on_all_clients(
     for random_state in range(random_split_reps):
         # Create an evaluation model and set its "weights" to the last saved during fl simulation
         log(INFO, "Create eval model with last saved params...")
-        eval_model = GaussianMixture(n_components=3, random_state=random_state)
+        eval_model = get_model("gaussianmixture", random_state, n_jobs=-1)
         print(persistent_storage[f"last_model_params_rstate{random_state}"])
         params = persistent_storage[f"last_model_params_rstate{random_state}"]
         eval_model.weights_ = params[0]
@@ -145,6 +146,8 @@ def evaluate_model_on_all_clients(
 
             # Perform imputation
             test = impute(test)
+            
+            training_columns_to_drop.append("time")
 
             # Define the features and target
             X_test = test.drop(columns=training_columns_to_drop)
@@ -155,13 +158,13 @@ def evaluate_model_on_all_clients(
 
             # Evaluate
             y_pred = eval_model.predict(X_test)
-            y_pred_proba = eval_model.predict_proba(X_test)
+            y_score = get_y_score(eval_model.predict_proba(X_test))
 
             metrics.add_hospitalid(hospitalid)
             metrics.add_random_state(random_state)
             metrics.add_accuracy_value(y_test, y_pred)
-            metrics.add_auroc_value(y_test, y_pred_proba)
-            metrics.add_auprc_value(y_test, y_pred_proba)
+            metrics.add_auroc_value(y_test, y_score)
+            metrics.add_auprc_value(y_test, y_score)
             metrics.add_individual_confusion_matrix_values(
                 y_test, y_pred, test["stay_id"]
             )
@@ -217,7 +220,14 @@ def run_federated_gmm_simulation():
     metrics_avg_df = metrics.get_metrics_dataframe(
         additional_metrics=["Hospitalid"], avg_metrics=True
     )
-    save_csv(metrics_avg_df, path["results"], "federated_gaussianmixture_metrics_avg.csv")
+    save_csv(
+        metrics_avg_df, path["results"], "federated_gaussianmixture_metrics_avg.csv"
+    )
+    
+    summary_results = metrics.get_summary_dataframe()
+    save_csv(
+        summary_results, os.path.join(path["results"], "summary"), f"federated_gaussianmixture_summary.csv"
+    )
 
 
 if __name__ == "__main__":

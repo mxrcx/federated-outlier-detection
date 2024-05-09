@@ -7,6 +7,8 @@ sys.path.append("..")
 
 from logging import INFO
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
 import flwr as fl
 from flwr.common.logger import log
@@ -18,6 +20,8 @@ from data.saving import save_csv
 from data.make_hospital_splits import make_hospital_splits
 from data.processing import impute, scale_X_test
 from metrics.metrics import Metrics
+from metrics.metric_utils import get_y_score
+from training.preparation import get_model
 import xgboost as xgb
 
 # FL experimental settings
@@ -116,6 +120,7 @@ def get_client_fn(path_to_splits, hospitalids, random_state, training_columns_to
 
 def evaluate_model_on_all_clients(
     path_to_splits,
+    path_to_results,
     hospitalids,
     random_split_reps,
     training_columns_to_drop,
@@ -124,13 +129,53 @@ def evaluate_model_on_all_clients(
     for random_state in range(random_split_reps):
         # Create an evaluation model and set its "weights" to the last saved during fl simulation
         logging.info("Create eval model with last saved params...")
-        eval_model = xgb.XGBClassifier()
+        eval_model = get_model("xgboostclassifier", random_state, n_jobs=-1)
         global_model = None
         for item in persistent_storage[
             f"last_model_params_rstate{random_state}"
         ].tensors:
             global_model = bytearray(item)
         eval_model.load_model(global_model)
+
+        # Create feature importance plot
+        if random_state == 0:
+            # ax = xgb.plot_importance(eval_model, max_num_features=15)
+            # ax.figure.tight_layout()
+            # ax.figure.savefig(os.path.join(path_to_results, "federated_xgboost_feature_importance.png"))
+            importances = eval_model.get_booster().get_score(importance_type="weight")
+            feature_importance_df = pd.DataFrame(
+                {
+                    "Feature": list(importances.keys()),
+                    "Importance": list(importances.values()),
+                }
+            )
+            feature_importance_df = feature_importance_df.sort_values(
+                by="Importance", ascending=False
+            )
+            feature_importance_df["Rank"] = range(1, len(feature_importance_df) + 1)
+
+            # Only show top 15 features
+            feature_importance_df_top15 = feature_importance_df[
+                feature_importance_df["Rank"] <= 15
+            ]
+            feature_importance_df_top15.sort_values(by="Rank", inplace=True, ascending=False)
+
+            plt.figure(figsize=(10, 6))
+            plt.barh(
+                feature_importance_df_top15["Feature"],
+                feature_importance_df_top15["Rank"],
+                color="skyblue",
+            )
+            plt.xlabel("Rank")
+            plt.ylabel("Feature")
+            plt.title("Federated XGBoost - Feature Importance by Rank")
+            plt.tight_layout()
+            plt.show()
+            plt.savefig(
+                os.path.join(
+                    path_to_results, "federated_xgboost_feature_importance.png"
+                )
+            )
 
         logging.info("Evaluate model on all clients...")
         for hospitalid in hospitalids:
@@ -143,6 +188,8 @@ def evaluate_model_on_all_clients(
             # Perform imputation
             test = impute(test)
 
+            training_columns_to_drop.append("time")
+
             # Define the features and target
             X_test = test.drop(columns=training_columns_to_drop)
             y_test = test["label"]
@@ -152,19 +199,16 @@ def evaluate_model_on_all_clients(
 
             # Evaluate
             y_pred = eval_model.predict(X_test)
-            y_pred_proba = eval_model.predict_proba(X_test)
+            y_score = get_y_score(eval_model.predict_proba(X_test))
 
             metrics.add_hospitalid(hospitalid)
             metrics.add_random_state(random_state)
             metrics.add_accuracy_value(y_test, y_pred)
-            metrics.add_auroc_value(y_test, y_pred_proba)
-            metrics.add_auprc_value(y_test, y_pred_proba)
-            # metrics.add_confusion_matrix(y_test, y_pred)
+            metrics.add_auroc_value(y_test, y_score)
+            metrics.add_auprc_value(y_test, y_score)
             metrics.add_individual_confusion_matrix_values(
                 y_test, y_pred, test["stay_id"]
             )
-            # metrics.add_tn_fp_sum()
-            # metrics.add_fpr()
 
 
 def run_federated_xgboost_simulation():
@@ -200,6 +244,7 @@ def run_federated_xgboost_simulation():
 
     evaluate_model_on_all_clients(
         path["splits"],
+        path["results"],
         hospitalids,
         config_settings["random_split_reps"],
         config_settings["training_columns_to_drop"],
@@ -210,14 +255,23 @@ def run_federated_xgboost_simulation():
     metrics_df = metrics.get_metrics_dataframe(
         additional_metrics=["Hospitalid", "Random State"]
     )
-    save_csv(metrics_df, path["results"], "federated_xgboost_metrics.csv")
+    save_csv(metrics_df, path["results"], "federated_xgboostclassifier_metrics.csv")
 
     metrics.calculate_averages_per_hospitalid_across_random_states()
     metrics.calculate_total_averages_across_hospitalids()
     metrics_avg_df = metrics.get_metrics_dataframe(
         additional_metrics=["Hospitalid"], avg_metrics=True
     )
-    save_csv(metrics_avg_df, path["results"], "federated_xgboost_metrics_avg.csv")
+    save_csv(
+        metrics_avg_df, path["results"], "federated_xgboostclassifier_metrics_avg.csv"
+    )
+
+    summary_results = metrics.get_summary_dataframe()
+    save_csv(
+        summary_results,
+        os.path.join(path["results"], "summary"),
+        f"federated_xgboostclassifier_summary.csv",
+    )
 
 
 if __name__ == "__main__":

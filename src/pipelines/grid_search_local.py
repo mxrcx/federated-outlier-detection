@@ -16,45 +16,26 @@ from data.processing import impute, scale, scale_X_test
 from data.preprocessing import preprocessing
 from training.preparation import split_data_on_stay_ids, reformatting_model_name
 import pandas as pd
+import numpy as np
 
 
-def single_random_split_run(
+def single_run(
     model_name,
     data,
     test_size,
     random_state,
     columns_to_drop,
 ):
-    """
-    Perform a single run of the random split pipeline.
-
-    Args:
-        data (pd.DataFrame): The data to be used.
-        test_size (float): The size of the test set.
-        random_state (int): The random state to be used.
-        columns_to_drop (list): The configuration settings.
-    """
-    # logging.debug("Splitting data into a train and test subset...")
-    # train, test = split_data_on_stay_ids(data, test_size, random_state)
-
-    # Shrink down train and test to 30% of their current samples randomly
-    # train = data.sample(frac=0.01, random_state=random_state)
-    # test = test.sample(frac=0.3, random_state=random_state)
-
     logging.debug("Imputing missing values...")
     train = impute(data)
-    # test = impute(test)
 
     # Define the features and target
     columns_to_drop.append("time")
     X_train = train.drop(columns=columns_to_drop)
     y_train = train["label"]
-    y_train = [-1 if x == 1 else 1 for x in y_train]
-    # X_test = test.drop(columns=columns_to_drop)
-    # y_test = test["label"]
+    #if model_name == "isolationforest" or model_name == "oneclasssvm":
+        #y_train = [-1 if x == 1 else 1 for x in y_train]
 
-    # Perform scaling
-    # X_train, X_test = scale(X_train, X_test)
     X_train = scale_X_test(X_train)
 
     if model_name == "isolationforest":
@@ -91,7 +72,7 @@ def single_random_split_run(
             "n_components": [1, 2, 3, 4, 8],
             "covariance_type": ["full", "spherical"],
             "init_params": ["kmeans", "random"],
-            "max_iter": [50, 100, 150],
+            "max_iter": [50, 75, 100, 150],
             "reg_covar": [0.000001, 0.0001, 0.01, 0.1],
         }
     elif model_name == "oneclasssvm":
@@ -106,36 +87,13 @@ def single_random_split_run(
         model = IsolationForest(random_state=random_state, n_jobs=-1)
         param_grid = {}
 
-    '''
-    random_search = RandomizedSearchCV(
-        model,
-        param_distributions=param_grid_random,
-        n_iter=20,
-        scoring="roc_auc_score",
-        cv=5,
-        random_state=random_state,
-        n_jobs=-1,
-    )
-    '''
-
-    '''
-    grid_search = GridSearchCV(
-        model,
-        param_grid,
-        cv=5,
-        scoring=["average_precision", "roc_auc", "accuracy"],
-        refit="average_precision",
-        n_jobs=-1,
-    )
-    '''
     
     grid_search = GridSearchCV(
         model,
         param_grid,
         cv=5,
-        scoring="average_precision",
-        #scoring="accuracy",
-        #scoring=make_scorer(average_precision_score, greater_is_better=True),
+        #scoring="average_precision",
+        scoring="accuracy",
         n_jobs=-1,
     )
 
@@ -149,10 +107,11 @@ def single_random_split_run(
     logging.debug(best_params)
     logging.debug(f"Best score for {model_name} found:")
     logging.debug(best_score)
-    # logging.debug(grid_search.cv_results_)
+    
+    return grid_search.cv_results_
 
 
-def grid_search_random_split():
+def grid_search_local():
     logging.debug("Loading configuration...")
     path, filename, config_settings = load_configuration()
     
@@ -165,48 +124,52 @@ def grid_search_random_split():
     if not os.path.exists(os.path.join(path["processed"], filename["processed"])):
         logging.info("Preprocess data...")
         preprocessing()
-
-    # logging.debug("Loading preprocessed data...")
-    # data = load_parquet(path["processed"], filename["processed"], optimize_memory=True)
-
-    for random_state in range(3): #config_settings["random_split_reps"]):
-        logging.info(f"Starting a single run with random_state={random_state}")
-        # hospital 63, 157, 71, 245, 443
-        data_1 = load_parquet(
-            os.path.join(path["splits"], "individual_hospital_splits"),
-            f"hospital63_rstate{random_state}_train.parquet",
-            optimize_memory=True,
-        )
-        data_2 = load_parquet(
-            os.path.join(path["splits"], "individual_hospital_splits"),
-            f"hospital157_rstate{random_state}_train.parquet",
-            optimize_memory=True,
-        )
-        data_3 = load_parquet(
-            os.path.join(path["splits"], "individual_hospital_splits"),
-            f"hospital71_rstate{random_state}_train.parquet",
-            optimize_memory=True,
-        )
-        data_4 = load_parquet(
-            os.path.join(path["splits"], "individual_hospital_splits"),
-            f"hospital245_rstate{random_state}_train.parquet",
-            optimize_memory=True,
-        )
-        data_5 = load_parquet(
-            os.path.join(path["splits"], "individual_hospital_splits"),
-            f"hospital443_rstate{random_state}_train.parquet",
-            optimize_memory=True,
-        )
         
-        data = pd.concat([data_1, data_2, data_3, data_4, data_5], ignore_index=True)
+    # Load hospitalids
+    hospitalids = np.load(os.path.join(path["splits"], "hospitalids.npy"))
+    random_hospitalids = np.random.choice(hospitalids, size=10, replace=False)
+    
+    # Randomly select hospitals
+    random_state = 0
+    np.random.seed(random_state) 
+    random_hospitalids = np.random.choice(hospitalids, size=10, replace=False)
+    
+    params_list = []
+    mean_test_score_list = [[] for _ in range(10)]
+    
+    for hospitalid_idx, hospitalid in enumerate(random_hospitalids):
+        data = load_parquet(
+            os.path.join(path["splits"], "individual_hospital_splits"),
+            f"hospital{hospitalid}_rstate{random_state}_train.parquet",
+            optimize_memory=True,
+        )
 
-        single_random_split_run(
+        cv_results = single_run(
             model_name,
             data,
             config_settings["test_size"],
             random_state,
             config_settings["training_columns_to_drop"],
         )
+        
+        for mean_test_score, params in zip(cv_results["mean_test_score"], cv_results["params"]):
+            if hospitalid_idx == 0:
+                params_list.append(params)
+            mean_test_score_list[hospitalid_idx].append(mean_test_score)
+            
+    transposed_data = list(map(list, zip(*mean_test_score_list)))
+    average_scores = [sum(column) / len(column) for column in transposed_data]
+    logging.debug("Average scores:")
+    logging.debug(average_scores)
+    
+    max_score = max(average_scores)
+    max_index = average_scores.index(max_score)
+    best_params = params_list[max_index]
+    
+    logging.debug("Max Score:")
+    logging.debug(max_score)
+    logging.debug("Best Params:")
+    logging.debug(best_params)
 
 
 if __name__ == "__main__":
@@ -215,4 +178,4 @@ if __name__ == "__main__":
         level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
     )
 
-    grid_search_random_split()
+    grid_search_local()

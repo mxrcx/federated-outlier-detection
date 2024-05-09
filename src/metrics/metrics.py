@@ -19,14 +19,18 @@ class Metrics:
         "Accuracy",
         "AUROC",
         "AUPRC",
-        "True Negatives",
-        "Stay IDs with True Negatives",
+        "Positive labels (TP + FN)",
+        "Stay IDs with Positive labels (TP + FN)",
+        "Negative labels (TN + FP)",
+        "Stay IDs with Negative labels (TN + FP)",
         "False Positives",
         "Stay IDs with False Positives",
         "False Negatives",
         "Stay IDs with False Negatives",
         "True Positives",
         "Stay IDs with True Positives",
+        "True Negatives",
+        "Stay IDs with True Negatives",
     ]
 
     def __init__(self):
@@ -60,16 +64,22 @@ class Metrics:
                 "mean": [],
                 "std": [],
             },
-            "Confusion Matrix": {
-                "value": [],
-                "mean": [],
-            },
-            "True Negatives": {
+            "Positive labels (TP + FN)": {
                 "value": [],
                 "mean": [],
                 "std": [],
             },
-            "Stay IDs with True Negatives": {
+            "Stay IDs with Positive labels (TP + FN)": {
+                "value": [],
+                "mean": [],
+                "std": [],
+            },
+            "Negative labels (TN + FP)": {
+                "value": [],
+                "mean": [],
+                "std": [],
+            },
+            "Stay IDs with Negative labels (TN + FP)": {
                 "value": [],
                 "mean": [],
                 "std": [],
@@ -104,12 +114,12 @@ class Metrics:
                 "mean": [],
                 "std": [],
             },
-            "TN-FP-Sum": {
+            "True Negatives": {
                 "value": [],
                 "mean": [],
                 "std": [],
             },
-            "FPR": {
+            "Stay IDs with True Negatives": {
                 "value": [],
                 "mean": [],
                 "std": [],
@@ -169,79 +179,46 @@ class Metrics:
             y_true: True labels
             y_pred: Predicted labels
         """
-        accuracy = round(accuracy_score(y_true, y_pred), 4)
+        accuracy = accuracy_score(y_true, y_pred) * 100
         self.metrics_dict["Accuracy"]["value"].append(accuracy)
 
-    def _get_y_score(self, y_pred_proba):
-        """
-        Get the probability of the positive class (y_score).
-
-        Args:
-            y_pred_proba: Predicted probabilities
-
-        Returns:
-            np.ndarray: Probability of the positive class
-        """
-        try:
-            y_score = y_pred_proba[:, 1]
-        except IndexError:
-            # If all predictions are False(=0), no predictions are True(=1)
-            y_score = np.zeros_like(y_pred_proba)
-        return y_score
-
-    def add_auroc_value(self, y_true, y_pred_proba):
+    def add_auroc_value(self, y_true, y_score):
         """
         Add area under receiver operating characteristic curve value to metrics dictionary.
 
         Args:
             y_true: True labels
-            y_pred_proba: Predicted probabilities
+            y_score: Predicted probabilities
         """
-        y_score = self._get_y_score(y_pred_proba)
-
         # Calculate area under receiver operating characteristic curve
         try:
             if np.sum(y_true) == 0:  # If there are no positive samples in true labels
                 auroc = "No Sepsis Occurences"
             else:
-                auroc = round(roc_auc_score(y_true, y_score), 4)
+                auroc = roc_auc_score(y_true, y_score) * 100
         except ValueError:
             auroc = "Not defined"
 
         self.metrics_dict["AUROC"]["value"].append(auroc)
 
-    def add_auprc_value(self, y_true, y_pred_proba):
+    def add_auprc_value(self, y_true, y_score):
         """
         Add area under precision-recall curve value to metrics dictionary.
 
         Args:
             y_true: True labels
-            y_pred_proba: Predicted probabilities
+            y_score: Predicted probabilities
         """
-        y_score = self._get_y_score(y_pred_proba)
-
         # Calculate average precision
         try:
             if np.sum(y_true) == 0:  # If there are no positive samples in true labels
                 auprc = "No Sepsis Occurences"
             else:
-                auprc = round(average_precision_score(y_true, y_score), 4)
+                auprc = average_precision_score(y_true, y_score) * 100
         except ValueError:
             auprc = "Not defined"
 
         self.metrics_dict["AUPRC"]["value"].append(auprc)
-
-    def add_confusion_matrix(self, y_true, y_pred):
-        """
-        Add confusion matrix to metrics dictionary.
-
-        Args:
-            y_true: True labels
-            y_pred: Predicted labels
-            stay_ids: Stay IDs
-        """
-        cm = confusion_matrix(y_true, y_pred)
-        self.metrics_dict["Confusion Matrix"]["value"].append(cm)
 
     def add_false_positives(self, y_true, y_pred, stay_ids):
         """
@@ -252,7 +229,7 @@ class Metrics:
             y_pred: Predicted labels
             stay_ids: Stay IDs
         """
-        cm = confusion_matrix(y_true, y_pred)
+        cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
         try:
             fp = cm[0][1]
         except IndexError:
@@ -283,7 +260,7 @@ class Metrics:
             y_pred: Predicted labels
             stay_ids: Stay IDs
         """
-        cm = confusion_matrix(y_true, y_pred)
+        cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
         try:
             fn = cm[1][0]
         except IndexError:
@@ -314,7 +291,7 @@ class Metrics:
             y_pred: Predicted labels
             stay_ids: Stay IDs
         """
-        cm = confusion_matrix(y_true, y_pred)
+        cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
         try:
             tp = cm[1][1]
         except IndexError:
@@ -345,7 +322,7 @@ class Metrics:
             y_pred: Predicted labels
             stay_ids: Stay IDs
         """
-        cm = confusion_matrix(y_true, y_pred)
+        cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
         try:
             tn = cm[0][0]
         except IndexError:
@@ -367,6 +344,24 @@ class Metrics:
             stay_ids_with_tn
         )
 
+    def add_positve_negative_label_counts(self):
+        self.metrics_dict["Positive labels (TP + FN)"]["value"].append(
+            self.metrics_dict["True Positives"]["value"][-1]
+            + self.metrics_dict["False Negatives"]["value"][-1]
+        )
+        self.metrics_dict["Stay IDs with Positive labels (TP + FN)"]["value"].append(
+            self.metrics_dict["Stay IDs with True Positives"]["value"][-1]
+            + self.metrics_dict["Stay IDs with False Negatives"]["value"][-1]
+        )
+        self.metrics_dict["Negative labels (TN + FP)"]["value"].append(
+            self.metrics_dict["True Negatives"]["value"][-1]
+            + self.metrics_dict["False Positives"]["value"][-1]
+        )
+        self.metrics_dict["Stay IDs with Negative labels (TN + FP)"]["value"].append(
+            self.metrics_dict["Stay IDs with True Negatives"]["value"][-1]
+            + self.metrics_dict["Stay IDs with False Positives"]["value"][-1]
+        )
+
     def add_individual_confusion_matrix_values(self, y_true, y_pred, stay_ids):
         """
         Add individual confusion matrix values to metrics dictionary.
@@ -381,40 +376,7 @@ class Metrics:
         self.add_true_positives(y_true, y_pred, stay_ids)
         self.add_true_negatives(y_true, y_pred, stay_ids)
 
-    def _get_last_confusion_matrix(self):
-        """
-        Get last confusion matrix.
-
-        Returns:
-            np.ndarray: Last confusion matrix
-        """
-        return self.metrics_dict["Confusion Matrix"]["value"][-1]
-
-    def add_tn_fp_sum(self):
-        """
-        Add sum of true negatives and false positives to metrics dictionary.
-        """
-        cm = self._get_last_confusion_matrix()
-        tn = cm[0][0]
-        try:
-            fp = cm[0][1]
-        except IndexError:
-            fp = 0
-        tn_fp_sum = tn + fp
-        self.metrics_dict["TN-FP-Sum"]["value"].append(tn_fp_sum)
-
-    def add_fpr(self):
-        """
-        Add false positive rate to metrics dictionary.
-        """
-        cm = self._get_last_confusion_matrix()
-        tn = cm[0][0]
-        try:
-            fp = cm[0][1]
-        except IndexError:
-            fp = 0
-        fpr = round(fp / (tn + fp), 4)
-        self.metrics_dict["FPR"]["value"].append(fpr)
+        self.add_positve_negative_label_counts()
 
     def _get_metric_list(
         self,
@@ -472,9 +434,9 @@ class Metrics:
         """
         try:
             if stat_type == "mean":
-                return round(sum(metric_list) / len(metric_list), 4)
+                return round(sum(metric_list) / len(metric_list), 2)
             elif stat_type == "std":
-                return round(np.std(metric_list), 4)
+                return round(np.std(metric_list), 2)
         except Exception:
             return f"{stat_type.capitalize()} calculation not possible"
 
@@ -499,44 +461,67 @@ class Metrics:
             self.metrics_dict[metric]["mean"].append(metric_mean)
             self.metrics_dict[metric]["std"].append(metric_std)
 
-    def add_confusion_matrix_average(
-        self, mask: Optional[np.ndarray] = None, on_mean_data: bool = False
-    ):
-        """
-        Add average confusion matrix to metrics dictionary. Consider only the last entries_to_consider entries.
-
-        Args:
-            mask: Mask for filtering
-            on_mean_data: If True, calculate average on mean data
-        """
-        if on_mean_data:
-            cm_list = self.metrics_dict["Confusion Matrix"]["mean"]
-        else:
-            cm_list = self.metrics_dict["Confusion Matrix"]["value"]
-
-        # If specified: filter elements
-        if mask is not None:
-            cm_list = [value for value, include in zip(cm_list, mask) if include]
-
-        cm_avg = sum(cm_list)
-        self.metrics_dict["Confusion Matrix"]["mean"].append(cm_avg)
-
     def calculate_averages_across_random_states(self):
+        mask_1 = [
+            value > 0
+            for value in self.metrics_dict["Positive labels (TP + FN)"]["value"]
+        ]
         self.add_random_state_avg("Total Average")
-        self.add_metrics_stats(self.METRICS)
-        # self.add_confusion_matrix_average()
+        self.add_metrics_stats(self.METRICS, mask_1)
+
+        mask_2 = self.metrics_dict["Random State"]["value"] != "Total Average"
+        mask_3 = [
+            (
+                self.metrics_dict["Positive labels (TP + FN)"]["value"][i]
+                / (
+                    self.metrics_dict["Positive labels (TP + FN)"]["value"][i]
+                    + self.metrics_dict["Negative labels (TN + FP)"]["value"][i]
+                )
+            )
+            > 0.1
+            for i in range(len(self.metrics_dict["Positive labels (TP + FN)"]["value"]))
+        ]
+        mask = mask_1 & mask_2 & mask_3
+        self.add_random_state_avg("Total Average (>0.1 sepsis proportion)")
+        self.add_metrics_stats(self.METRICS, mask)
 
     def calculate_averages_per_hospitalid_across_random_states(self):
         for hospitalid in set(self.metrics_dict["Hospitalid"]["value"]):
-            mask = self.metrics_dict["Hospitalid"]["value"] == hospitalid
+            mask_1 = self.metrics_dict["Hospitalid"]["value"] == hospitalid
+            mask_2 = [
+                value > 0
+                for value in self.metrics_dict["Positive labels (TP + FN)"]["value"]
+            ]
+            mask = mask_1 & mask_2
             self.add_hospitalid_avg(hospitalid)
             self.add_metrics_stats(self.METRICS, mask)
-            # self.add_confusion_matrix_average(mask)
 
     def calculate_total_averages_across_hospitalids(self):
+        mask_1 = [
+            value > 0
+            for value in self.metrics_dict["Positive labels (TP + FN)"]["value"]
+        ]
         self.add_hospitalid_avg("Total Average")
-        self.add_metrics_stats(self.METRICS, on_mean_data=True)
-        # self.add_confusion_matrix_average(on_mean_data=True)
+        self.add_metrics_stats(self.METRICS, mask_1, on_mean_data=True)
+
+        mask_2 = np.full(len(self.metrics_dict["Hospitalid"]["value"]), True)
+        mask_2[-1] = False
+        mask_3 = [
+            (
+                self.metrics_dict["Positive labels (TP + FN)"]["value"][i]
+                / (
+                    self.metrics_dict["Positive labels (TP + FN)"]["value"][i]
+                    + self.metrics_dict["Negative labels (TN + FP)"]["value"][i]
+                )
+            )
+            > 0.01
+            for i in range(len(self.metrics_dict["Positive labels (TP + FN)"]["value"]))
+        ]
+        print(mask_2)
+        mask_1_2 = mask_1 & mask_2
+        mask_1_2_3 = mask_1_2 & mask_3
+        self.add_hospitalid_avg("Total Average (>0.1 sepsis proportion)")
+        self.add_metrics_stats(self.METRICS, mask_1_2_3, on_mean_data=True)
 
     def get_metrics_dataframe(
         self,
@@ -576,3 +561,34 @@ class Metrics:
                     filtered_metrics_dict[key] = value["value"]
 
         return pd.DataFrame(filtered_metrics_dict)
+
+    def get_summary_dataframe(self):
+        accuracy_prop = f'{self.metrics_dict["Accuracy"]["mean"][-1]} ({self.metrics_dict["Accuracy"]["std"][-1]})'
+        auroc_prop = f'{self.metrics_dict["AUROC"]["mean"][-1]} ({self.metrics_dict["AUROC"]["std"][-1]})'
+        auprc_prop = f'{self.metrics_dict["AUPRC"]["mean"][-1]} ({self.metrics_dict["AUPRC"]["std"][-1]})'
+        positive_labels_prop = f'{self.metrics_dict["Positive labels (TP + FN)"]["mean"][-1]} ({self.metrics_dict["Stay IDs with Positive labels (TP + FN)"]["mean"][-1]})'
+        negative_labels_prop = f'{self.metrics_dict["Negative labels (TN + FP)"]["mean"][-1]} ({self.metrics_dict["Stay IDs with Negative labels (TN + FP)"]["mean"][-1]})'
+        false_positives_prop = f'{self.metrics_dict["False Positives"]["mean"][-1]} ({self.metrics_dict["Stay IDs with False Positives"]["mean"][-1]})'
+        false_negatives_prop = f'{self.metrics_dict["False Negatives"]["mean"][-1]} ({self.metrics_dict["Stay IDs with False Negatives"]["mean"][-1]})'
+
+        accuracy = f'{self.metrics_dict["Accuracy"]["mean"][-2]} ({self.metrics_dict["Accuracy"]["std"][-2]})'
+        auroc = f'{self.metrics_dict["AUROC"]["mean"][-2]} ({self.metrics_dict["AUROC"]["std"][-2]})'
+        auprc = f'{self.metrics_dict["AUPRC"]["mean"][-2]} ({self.metrics_dict["AUPRC"]["std"][-2]})'
+        positive_labels = f'{self.metrics_dict["Positive labels (TP + FN)"]["mean"][-2]} ({self.metrics_dict["Stay IDs with Positive labels (TP + FN)"]["mean"][-2]})'
+        negative_labels = f'{self.metrics_dict["Negative labels (TN + FP)"]["mean"][-2]} ({self.metrics_dict["Stay IDs with Negative labels (TN + FP)"]["mean"][-2]})'
+        false_positives = f'{self.metrics_dict["False Positives"]["mean"][-2]} ({self.metrics_dict["Stay IDs with False Positives"]["mean"][-2]})'
+        false_negatives = f'{self.metrics_dict["False Negatives"]["mean"][-2]} ({self.metrics_dict["Stay IDs with False Negatives"]["mean"][-2]})'
+
+        summary = {
+            "Accuracy": [accuracy, accuracy_prop],
+            "AUROC": [auroc, auroc_prop],
+            "AUPRC": [auprc, auprc_prop],
+            "Positive labels (TP + FN)": [positive_labels, positive_labels_prop],
+            "Negative labels (TN + FP)": [negative_labels, negative_labels_prop],
+            "False Positives": [false_positives, false_positives_prop],
+            "False Negatives": [false_negatives, false_negatives_prop],
+        }
+
+        summary_df = pd.DataFrame(summary)
+
+        return summary_df
