@@ -16,4 +16,15 @@ src/pipelines/logs/
 __pycache__
 
 # old files
-src/pipelines/old_files/
+src/pipelines/old_files/./src/analysis/job_analysis.sh
+./src/pipelines/job_local.sh
+./src/pipelines/job_federated_xgboost.sh
+./src/pipelines/job_federated_ocsvm.sh
+./src/pipelines/job_test.sh
+./src/pipelines/job_federated_gmm.sh
+./src/pipelines/job_centralized.sh
+./src/pipelines/job_grid_search.sh
+./src/data/job_explore_data.sh
+./src/data/job_preprocessing.sh
+./src/data/job_make_hospital_splits.sh
+./src/data/job_feature_extraction.sh
