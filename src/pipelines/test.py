@@ -322,14 +322,68 @@ def plot_score_sampledensity():
 
     plt.savefig(os.path.join(path["results"], "xgboost_performance_plot_auprc_proportion.png"))  # Save after showing
 
+def calculate_median_iqr(results):
+    metric = results.iloc[1:-2]
+    
+    # Remove all string values
+    metric = [value for value in metric if not (isinstance(value, str) and len(value) > 6)]
+    metric = list(map(float, metric))
+
+    median = round(np.median(metric), 2)
+    q3 = round(np.percentile(metric, 75), 2)
+    q1 = round(np.percentile(metric, 25), 2)
+    iqr = round(q3 - q1, 2)
+    
+    return median, iqr, q1, q3
+
+def print_all_medians_iqrs():
+    path, _filename, _config_settings = load_configuration()
+    models = ["xgboostclassifier", "randomforestclassifier", "isolationforest", "oneclasssvm", "gaussianmixture"]
+    
+    for model in models:
+        results_centralized = load_csv(path["results"], f"centralized_{model}_metrics_avg.csv")
+        accuracy_centralized_median, accuracy_centralized_iqr, accuracy_centralized_q1, accuracy_centralized_q3 = calculate_median_iqr(results_centralized["Accuracy Mean"])
+        auroc_centralized_median, auroc_centralized_iqr, auroc_centralized_q1, auroc_centralized_q3 = calculate_median_iqr(results_centralized["AUROC Mean"])
+        auprc_centralized_median, auprc_centralized_iqr, auprc_centralized_q1, auprc_centralized_q3 = calculate_median_iqr(results_centralized["AUPRC Mean"])
+        
+        results_local = load_csv(path["results"], f"local_{model}_metrics_avg.csv")
+        accuracy_local_median, accuracy_local_iqr, accuracy_local_q1, accuracy_local_q3 = calculate_median_iqr(results_local["Accuracy Mean"])
+        auroc_local_median, auroc_local_iqr, auroc_local_q1, auroc_local_q3 = calculate_median_iqr(results_local["AUROC Mean"])
+        auprc_local_median, auprc_local_iqr, auprc_local_q1, auprc_local_q3  = calculate_median_iqr(results_local["AUPRC Mean"])
+
+        print(f"Model: {model}")
+        print("Centralized Metrics:")
+        print(f"Accuracy Median (IQR): {accuracy_centralized_median} ({accuracy_centralized_q1}-{accuracy_centralized_q3})")
+        print(f"AUROC Median (IQR): {auroc_centralized_median} ({auroc_centralized_q1}-{auroc_centralized_q3})")
+        print(f"AUPRC Median (IQR): {auprc_centralized_median} ({auprc_centralized_q1}-{auprc_centralized_q3})")
+        print("----------------------------------------------------")
+        print("Local Metrics:")
+        print(f"Accuracy Median (IQR): {accuracy_local_median} ({accuracy_local_q1}-{accuracy_local_q3})")
+        print(f"AUROC Median (IQR): {auroc_local_median} ({auroc_local_q1}-{auroc_local_q3})")
+        print(f"AUPRC Median (IQR): {auprc_local_median} ({auprc_local_q1}-{auprc_local_q3})")
+        print("----------------------------------------------------")
+        
+        if model in ["xgboostclassifier", "oneclasssvm", "gaussianmixture"]:
+            results_federated = load_csv(path["results"], f"federated_{model}_metrics_avg.csv")
+            accuracy_federated_median, accuracy_federated_iqr, accuracy_federated_q1, accuracy_federated_q3 = calculate_median_iqr(results_federated["Accuracy Mean"])
+            auroc_federated_median, auroc_federated_iqr, auroc_federated_q1, auroc_federated_q3 = calculate_median_iqr(results_federated["AUROC Mean"])
+            auprc_federated_median, auprc_federated_iqr, auprc_federated_q1, auprc_federated_q3 = calculate_median_iqr(results_federated["AUPRC Mean"])
+            
+            print("Federated Metrics:")
+            print(f"Accuracy Median (IQR): {accuracy_federated_median} ({accuracy_federated_q1}-{accuracy_federated_q3})")
+            print(f"AUROC Median (IQR): {auroc_federated_median} ({auroc_federated_q1}-{auroc_federated_q3})")
+            print(f"AUPRC Median (IQR): {auprc_federated_median} ({auprc_federated_q1}-{auprc_federated_q3})")
+            print("----------------------------------------------------")
+
 
 def run_test():
-    print_shapes()
+    # print_shapes()
     # plot_auprc_histogram()
-    print_statistics()
+    # print_statistics()
     # plot_score_sampledensity()
     # plot_sepsis_proportion_hospitals()
     # test_difference_pos_label()
+    print_all_medians_iqrs()
 
 
 if __name__ == "__main__":
